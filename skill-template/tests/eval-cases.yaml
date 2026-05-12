@@ -1,0 +1,22 @@
+# Eval cases for the skill. Promotion to status: stable requires >= 3 cases.
+# Each case: user input + assertions the skill's response must satisfy.
+
+- description: <one-line scenario>
+  vars:
+    user_message: "<what the user says>"
+  assert:
+    - type: llm-rubric
+      provider: anthropic:messages:claude-opus-4-7
+      value: |
+        The response must satisfy:
+        - <assertion 1>
+        - <assertion 2>
+    - type: not-contains
+      value: "<forbidden phrase or destructive command>"
+
+- description: <second scenario>
+  vars:
+    user_message: "..."
+  assert:
+    - type: contains
+      value: "<must include phrase>"

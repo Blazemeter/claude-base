@@ -1,0 +1,8 @@
+node_modules/
+.promptfoo-results.json
+.langfuse/
+__pycache__/
+.venv/
+.env
+.env.*
+*.log

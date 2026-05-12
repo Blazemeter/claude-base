@@ -1,0 +1,25 @@
+description: Eval suite for <skill-name>
+
+providers:
+  - id: anthropic:messages:claude-opus-4-7
+    config:
+      max_tokens: 2048
+      temperature: 0
+
+prompts:
+  - file://../SKILL.md
+
+tests: file://./eval-cases.yaml
+
+defaultTest:
+  options:
+    provider:
+      id: anthropic:messages:claude-opus-4-7
+      config: { temperature: 0 }
+
+outputPath: ./.promptfoo-results.json
+
+env:
+  LANGFUSE_HOST: https://langfuse.internal.perforce.com
+  LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+  LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}

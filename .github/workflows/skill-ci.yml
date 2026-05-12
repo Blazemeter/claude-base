@@ -1,0 +1,83 @@
+name: Skill CI (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      skill_path:
+        required: true
+        type: string
+        description: Path to the skill directory inside the caller repo
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+      LANGFUSE_PUBLIC_KEY:
+        required: true
+      LANGFUSE_SECRET_KEY:
+        required: true
+
+jobs:
+  static-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: caller
+      - uses: actions/checkout@v4
+        with:
+          repository: PerfectoMobileDev/claude-base
+          path: claude-base
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - working-directory: claude-base/validators
+        run: npm install --omit=dev
+      - run: node claude-base/validators/validate-skill.js caller/${{ inputs.skill_path }}
+      - run: node claude-base/validators/check-permissions.js caller/${{ inputs.skill_path }}
+
+  promptfoo-eval:
+    needs: static-validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g promptfoo
+      - name: Run eval suite (traced to Langfuse)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LANGFUSE_HOST: https://langfuse.internal.perforce.com
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+        run: |
+          promptfoo eval -c ${{ inputs.skill_path }}/tests/promptfooconfig.yaml \
+            --no-progress-bar --output ${{ inputs.skill_path }}/.promptfoo-results.json
+      - name: Assert pass rate >= 85%
+        run: |
+          PASS=$(jq '.results.stats.successes' ${{ inputs.skill_path }}/.promptfoo-results.json)
+          TOTAL=$(jq '.results.stats.successes + .results.stats.failures' ${{ inputs.skill_path }}/.promptfoo-results.json)
+          RATE=$(awk "BEGIN { print ($PASS/$TOTAL)*100 }")
+          echo "Pass rate: $RATE%"
+          awk "BEGIN { exit !($RATE >= 85) }"
+
+  inspect-agentic:
+    needs: static-validate
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/perfectomobiledev/claude-skill-sandbox:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check if inspect_eval.py exists
+        id: check
+        run: |
+          if [ -f ${{ inputs.skill_path }}/tests/inspect_eval.py ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+      - if: steps.check.outputs.exists == 'true'
+        run: pip install inspect-ai anthropic
+      - if: steps.check.outputs.exists == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: inspect eval ${{ inputs.skill_path }}/tests/inspect_eval.py --model anthropic/claude-opus-4-7

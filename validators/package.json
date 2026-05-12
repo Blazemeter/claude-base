@@ -1,0 +1,16 @@
+{
+  "name": "@perfecto/claude-base-validators",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "validate-skill": "./validate-skill.js",
+    "check-permissions": "./check-permissions.js"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.0"
+  }
+}

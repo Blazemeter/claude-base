@@ -1,0 +1,42 @@
+# Approved community skills/frameworks at BU level.
+# Pinned to specific commits/versions; teams may install only from this list.
+# Anything not listed requires a security review before adoption.
+
+approved:
+  - name: superpowers
+    repo: https://github.com/obra/superpowers
+    pinned-ref: <pin-to-specific-commit-sha-after-review>
+    reviewed: 2026-05-12
+    reviewer: team-architects
+    permission-tier-cap: 2
+    notes: |
+      Used by Sparta, Mobile, Mason. Provides plans, worktrees, subagents.
+      Review focus: no auto-merge, no force-push, respects deny rules.
+
+  - name: BMAD-METHOD
+    repo: https://github.com/bmad-code-org/BMAD-METHOD
+    pinned-ref: <pin>
+    reviewed: 2026-05-12
+    reviewer: team-architects
+    permission-tier-cap: 1
+    notes: Used by Sparta, evaluated by Mobile. Planning framework, not executor.
+
+  - name: spec-kit
+    repo: https://github.com/github/spec-kit
+    pinned-ref: <pin>
+    reviewed: 2026-05-12
+    reviewer: team-architects
+    permission-tier-cap: 1
+    notes: Spec generation. Evaluated by Mobile.
+
+  - name: OpenSpec
+    repo: https://openspec.dev
+    pinned-ref: <pin>
+    reviewed: 2026-05-12
+    reviewer: team-architects
+    permission-tier-cap: 1
+    notes: Spec generation. Evaluated by Mobile.
+
+pending-review: []
+
+denied: []
