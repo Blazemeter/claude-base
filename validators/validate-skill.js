@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import url from "node:url";
 import matter from "gray-matter";
-import Ajv from "ajv";
+import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
 const REQUIRED_SECTIONS = [
@@ -34,6 +34,12 @@ if (!fs.existsSync(skillFile)) {
 
 const raw = fs.readFileSync(skillFile, "utf8");
 const { data: frontmatter, content: body } = matter(raw);
+
+// YAML auto-parses ISO dates to Date objects; coerce back to string so the
+// JSON Schema (which uses `type: string, format: date`) validates correctly.
+if (frontmatter["last-reviewed"] instanceof Date) {
+  frontmatter["last-reviewed"] = frontmatter["last-reviewed"].toISOString().slice(0, 10);
+}
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 const schemaPath = path.join(here, "skill-schema.json");
