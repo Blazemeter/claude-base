@@ -46,10 +46,28 @@
       "Bash(kubectl delete namespace*)",
       "Bash(mongo*drop*)",
       "Bash(psql*DROP*)",
+      "Bash(curl*|*sh*)",
+      "Bash(wget*|*sh*)",
+      "Bash(curl*|*bash*)",
+      "Bash(wget*|*bash*)",
+      "Bash(*eval*$(curl*)",
+      "Bash(aws iam delete-*)",
+      "Bash(aws iam detach-*)",
+      "Bash(aws kms schedule-key-deletion*)",
+      "Bash(aws secretsmanager delete-secret*)",
+      "Bash(docker system prune*)",
+      "Bash(terraform destroy*)",
+      "Bash(helm uninstall*)",
       "Read(.env)",
       "Read(**/.env)",
+      "Read(**/.env.*)",
       "Read(**/secrets.yaml)",
-      "Read(**/credentials.json)"
+      "Read(**/secrets.yml)",
+      "Read(**/credentials.json)",
+      "Read(**/id_rsa)",
+      "Read(**/id_ed25519)",
+      "Read(**/.aws/credentials)",
+      "Read(**/.kube/config)"
     ]
   }
 }

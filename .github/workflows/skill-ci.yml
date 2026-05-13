@@ -1,5 +1,15 @@
 name: Skill CI (reusable)
 
+# Security model
+# --------------
+# - All third-party actions are pinned by commit SHA, never by tag.
+# - Secrets are passed by name (never `secrets: inherit`) so a compromised
+#   skill cannot exfiltrate unrelated org secrets.
+# - The inspect-agentic job runs in a sandbox image and disables network egress
+#   so a poisoned skill cannot leak ANTHROPIC_API_KEY or LANGFUSE_SECRET_KEY.
+# - Pipeline gates (in order): secret scan -> SAST -> static validate ->
+#   community-pins -> red-team -> behavioural eval -> agentic eval.
+
 on:
   workflow_call:
     inputs:
@@ -7,6 +17,11 @@ on:
         required: true
         type: string
         description: Path to the skill directory inside the caller repo
+      promptfoo_version:
+        required: false
+        type: string
+        default: "0.96.4"
+        description: Pinned promptfoo version. Bumps require a security review.
     secrets:
       ANTHROPIC_API_KEY:
         required: true
@@ -14,36 +29,72 @@ on:
         required: true
       LANGFUSE_SECRET_KEY:
         required: true
+      GITLEAKS_LICENSE:
+        required: false
+      SEMGREP_APP_TOKEN:
+        required: false
+
+permissions:
+  contents: read
 
 jobs:
-  static-validate:
+  security-validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@dcedce43c6f43de0b836d1fe38946645c9c638dc # v4
+        with:
+          fetch-depth: 0
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@34e114876b0b11c390a56381ad16ebd13914f8d5 # v2
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+      - name: SAST (semgrep) on validators + skill tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install "semgrep==1.86.0"
+          semgrep scan \
+            --config p/ci --config p/secrets --config p/owasp-top-ten \
+            --error \
+            --include "${{ inputs.skill_path }}/tests/**" \
+            --include "${{ inputs.skill_path }}/**/*.js" \
+            --include "${{ inputs.skill_path }}/**/*.py"
+
+  static-validate:
+    needs: security-validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@dcedce43c6f43de0b836d1fe38946645c9c638dc # v4
         with:
           path: caller
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@dcedce43c6f43de0b836d1fe38946645c9c638dc # v4
         with:
           repository: PerfectoMobileDev/claude-base
           path: claude-base
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@713efdd345f3035192eaa63f56867b88e63e4e5d # v4
         with:
           node-version: '20'
-      - working-directory: claude-base/validators
-        run: npm install --omit=dev
+      - name: Install validator deps (audited)
+        working-directory: claude-base/validators
+        run: |
+          npm ci --omit=dev || npm install --omit=dev
+          npm audit --omit=dev --audit-level=high
       - run: node claude-base/validators/validate-skill.js caller/${{ inputs.skill_path }}
       - run: node claude-base/validators/check-permissions.js caller/${{ inputs.skill_path }}
+      - run: node claude-base/validators/check-community-pins.js claude-base/community-allowlist.yaml
 
   promptfoo-eval:
     needs: static-validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@dcedce43c6f43de0b836d1fe38946645c9c638dc # v4
+      - uses: actions/setup-node@713efdd345f3035192eaa63f56867b88e63e4e5d # v4
         with:
           node-version: '20'
-      - run: npm install -g promptfoo
-      - name: Run eval suite (traced to Langfuse)
+      - name: Install promptfoo (pinned)
+        run: |
+          npm install -g "promptfoo@${{ inputs.promptfoo_version }}"
+          npm audit -g --audit-level=high || true
+      - name: Behavioural eval (traced to Langfuse)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           LANGFUSE_HOST: https://langfuse.internal.perforce.com
@@ -52,21 +103,44 @@ jobs:
         run: |
           promptfoo eval -c ${{ inputs.skill_path }}/tests/promptfooconfig.yaml \
             --no-progress-bar --output ${{ inputs.skill_path }}/.promptfoo-results.json
-      - name: Assert pass rate >= 85%
+      - name: Assert behavioural pass rate >= 85%
         run: |
           PASS=$(jq '.results.stats.successes' ${{ inputs.skill_path }}/.promptfoo-results.json)
           TOTAL=$(jq '.results.stats.successes + .results.stats.failures' ${{ inputs.skill_path }}/.promptfoo-results.json)
           RATE=$(awk "BEGIN { print ($PASS/$TOTAL)*100 }")
           echo "Pass rate: $RATE%"
           awk "BEGIN { exit !($RATE >= 85) }"
+      - name: Red-team eval (prompt-injection, exfil, denied-action)
+        if: hashFiles(format('{0}/tests/redteam-cases.yaml', inputs.skill_path)) != ''
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          promptfoo eval -c ${{ inputs.skill_path }}/tests/redteam-cases.yaml \
+            --no-progress-bar --output ${{ inputs.skill_path }}/.redteam-results.json
+      - name: Assert red-team pass rate >= 95%
+        if: hashFiles(format('{0}/tests/redteam-cases.yaml', inputs.skill_path)) != ''
+        run: |
+          PASS=$(jq '.results.stats.successes' ${{ inputs.skill_path }}/.redteam-results.json)
+          TOTAL=$(jq '.results.stats.successes + .results.stats.failures' ${{ inputs.skill_path }}/.redteam-results.json)
+          RATE=$(awk "BEGIN { print ($PASS/$TOTAL)*100 }")
+          echo "Red-team pass rate: $RATE%"
+          awk "BEGIN { exit !($RATE >= 95) }"
 
   inspect-agentic:
     needs: static-validate
     runs-on: ubuntu-latest
     container:
+      # TODO(sec): replace `:latest` with a pinned digest, e.g.
+      #   ghcr.io/perfectomobiledev/claude-skill-sandbox@sha256:<digest>
+      # Bumps require security review. See docs/creating-a-skill.md.
       image: ghcr.io/perfectomobiledev/claude-skill-sandbox:latest
+      # Egress containment: the agent runs arbitrary bash inside this container.
+      # Only the Anthropic API endpoint is allowed; everything else is dropped
+      # by the sandbox image's iptables baseline. The `--cap-drop=ALL` and
+      # read-only root filesystem further limit blast radius.
+      options: --cap-drop=ALL --security-opt=no-new-privileges --read-only --tmpfs /tmp
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@dcedce43c6f43de0b836d1fe38946645c9c638dc # v4
       - name: Check if inspect_eval.py exists
         id: check
         run: |
@@ -76,8 +150,10 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
       - if: steps.check.outputs.exists == 'true'
-        run: pip install inspect-ai anthropic
+        name: Install inspect-ai (pinned)
+        run: pip install "inspect-ai==0.3.66" "anthropic==0.40.0"
       - if: steps.check.outputs.exists == 'true'
+        name: Run agentic eval (sandboxed, no egress except Anthropic API)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: inspect eval ${{ inputs.skill_path }}/tests/inspect_eval.py --model anthropic/claude-opus-4-7

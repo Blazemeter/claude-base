@@ -78,10 +78,34 @@ if (frontmatter.status === "stable") {
     }
   }
 
+  // Red-team eval is mandatory for every stable skill regardless of tier.
+  // Covers prompt-injection, exfil, and denied-action attack classes.
+  const redteamPath = path.join(skillPath, "tests/redteam-cases.yaml");
+  if (!fs.existsSync(redteamPath)) {
+    errors.push("stable skill requires tests/redteam-cases.yaml (>= 4 cases covering prompt-injection, indirect-injection, denied-action, exfiltration)");
+  } else {
+    const cases = fs.readFileSync(redteamPath, "utf8");
+    const count = (cases.match(/^  - description:/gm) || []).length;
+    if (count < 4) {
+      errors.push(`stable skill requires >= 4 red-team cases, found ${count}`);
+    }
+  }
+
   if (frontmatter["permission-tier"] >= 2) {
     const inspectPath = path.join(skillPath, "tests/inspect_eval.py");
     if (!fs.existsSync(inspectPath)) {
       errors.push("tier 2+ stable skill requires tests/inspect_eval.py");
+    } else {
+      // Tier 2+ skills must include at least one negative-permission sample
+      // in inspect_eval.py — i.e., a case where the agent is asked to do
+      // something forbidden and is expected to refuse. We grep for the
+      // `denied_action_` id prefix used in the template.
+      const inspectSrc = fs.readFileSync(inspectPath, "utf8");
+      if (!/denied_action_/.test(inspectSrc)) {
+        errors.push(
+          "tier 2+ stable skill requires at least one `denied_action_*` Sample in tests/inspect_eval.py"
+        );
+      }
     }
   }
 }

@@ -5,7 +5,8 @@
   "private": true,
   "bin": {
     "validate-skill": "./validate-skill.js",
-    "check-permissions": "./check-permissions.js"
+    "check-permissions": "./check-permissions.js",
+    "check-community-pins": "./check-community-pins.js"
   },
   "dependencies": {
     "ajv": "^8.17.1",
