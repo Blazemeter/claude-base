@@ -1,0 +1,79 @@
+# Tool policy for skills, slash commands, and sub-agents.
+#
+# `validate.py` enforces this file: every tool that appears in a skill/command
+# `allowed-tools` or in an agent `tools` frontmatter must be either:
+#   - listed in `allowed:` below, OR
+#   - listed in an `exceptions:` entry for that specific artifact, OR
+#   - prefixed with `mcp__` (MCP tools are governed by .mcp.json instead).
+#
+# Anything appearing in `forbidden:` fails the check even if also allowed or excepted.
+#
+# Bash scope syntax is preserved verbatim: `Bash(git *)` is a distinct entry from
+# `Bash(npm install)`. Use the narrowest scope that lets the skill do its job.
+# Unscoped `Bash` (with no parens) or `Bash(*)` (any command) is forbidden by default
+# because it bypasses every other safety gate.
+
+allowed:
+  # Read-only baseline — safe in every skill/agent.
+  - Read
+  - Grep
+  - Glob
+  - WebFetch
+  - WebSearch
+  - Agent
+  - TaskCreate
+  - TaskUpdate
+  - TaskGet
+  - TaskList
+
+  # Writes and edits — declare in description WHY this skill needs to write.
+  - Write
+  - Edit
+  - NotebookEdit
+
+  # Scoped Bash — add new entries here as legitimate needs arise.
+  # Pattern: Bash(<command> [args...]) — trailing * matches any arg suffix.
+  - Bash(git *)
+  - Bash(git status*)
+  - Bash(git log*)
+  - Bash(git diff*)
+  - Bash(git show*)
+  - Bash(npm install*)
+  - Bash(npm test*)
+  - Bash(pip install*)
+  - Bash(python *)
+  - Bash(python3 *)
+  - Bash(pytest*)
+  - Bash(node *)
+  - Bash(mvn *)
+  - Bash(jq *)
+  - Bash(curl *)
+  - Bash(aws *)
+  - Bash(gh *)
+
+forbidden:
+  # Never allowed — unrestricted shell defeats every other check below it.
+  - Bash
+  - Bash(*)
+  - Bash(rm *)
+  - Bash(sudo *)
+  - Bash(curl * | sh)
+  - Bash(wget * | sh)
+
+# Per-artifact exceptions. Use SPARINGLY — the global allowlist should cover
+# 95% of cases. An exception grants ONE artifact ONE extra tool, with a written
+# justification reviewed by CODEOWNERS at merge time. `forbidden:` still wins.
+#
+# `artifact` paths are relative to plugins/ and use the form
+#   <plugin>/<kind>/<name>
+# where <kind> is one of `skills`, `commands`, `agents`.
+#
+# To add an exception, replace the empty value below with a list. Example:
+#
+#   exceptions:
+#     - artifact: base-tools/skills/terraform-plan
+#       tools:
+#         - Bash(terraform plan)
+#         - Bash(terraform show*)
+#       justification: "skill produces plan summaries; cannot run apply or destroy"
+exceptions:

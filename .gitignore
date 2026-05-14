@@ -6,3 +6,8 @@ __pycache__/
 .env
 .env.*
 *.log
+
+# IDE
+.idea/
+.vscode/
+*.iml

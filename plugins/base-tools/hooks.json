@@ -1,0 +1,38 @@
+{
+  "_comment": "Plugin-level hooks. Scripts live under hooks/. Remove '_comment' fields when adapting in production — JSON doesn't support comments.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/audit-file-changes.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-secrets-on-write.sh"
+          }
+        ]
+      }
+    ],
+    "PreSkill": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/log-skill-activation.py"
+          }
+        ]
+      }
+    ]
+  }
+}
