@@ -4,13 +4,10 @@
   "owner": {
     "name": "claude-base maintainers"
   },
-  "metadata": {
-    "pluginRoot": "./plugins"
-  },
   "plugins": [
     {
       "name": "base-tools",
-      "source": "base-tools",
+      "source": "./plugins/base-tools",
       "description": "Base plugin with generic skill, slash-command, sub-agent, and hook templates plus working hook examples (audit logger, secret-on-write guard, skill-activation telemetry).",
       "version": "0.1.0",
       "keywords": ["base", "templates", "skills", "commands", "agents", "hooks", "starter"],
