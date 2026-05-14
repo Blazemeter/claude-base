@@ -7,6 +7,7 @@ on:
       - 'plugins/**'
       - 'scripts/**'
       - 'policy/**'
+      - '.gitleaks.toml'
       - '.github/workflows/plugin-validate.yml'
   push:
     branches: [main]
