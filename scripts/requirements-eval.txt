@@ -1,0 +1,4 @@
+# Optional dependencies for scripts/behavioral_runner.py (API runs).
+# Install with:  pip install -r scripts/requirements-eval.txt
+# The --lint mode of behavioral_runner does not require these.
+anthropic>=0.40.0

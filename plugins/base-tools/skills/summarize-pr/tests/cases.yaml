@@ -1,0 +1,35 @@
+# Behavioral test cases for summarize-pr.
+#
+# Run with:
+#   python scripts/behavioral_runner.py --skill base-tools/summarize-pr
+#
+# Each case is sent to Claude with the skill active. Assertions check the
+# response text. Real API runs are opt-in (require ANTHROPIC_API_KEY);
+# `--lint` only validates this file's structure.
+
+skill: base-tools/summarize-pr
+cases:
+  - name: pr-url-triggers-skill
+    prompt: "Can you summarize https://github.com/acme/widgets/pull/42 for me?"
+    expected:
+      response_must_contain: ["PR #42"]
+      response_must_not_contain: ["I cannot", "I don't have access"]
+
+  - name: bare-pr-reference-triggers-skill
+    prompt: "What's in PR 17?"
+    expected:
+      response_must_contain: ["PR #17"]
+
+  - name: rejects-non-github-pr
+    prompt: "Summarize this GitLab MR: https://gitlab.com/foo/bar/-/merge_requests/9"
+    expected:
+      response_must_not_contain: ["PR #9"]
+      response_must_contain: ["GitLab", "not"]
+
+  - name: detects-missing-gh-auth
+    prompt: "Summarize PR 1 in current repo"
+    setup:
+      # Simulated state — real runner would mock gh auth status
+      gh_authenticated: false
+    expected:
+      response_must_contain: ["gh auth login"]

@@ -1,0 +1,21 @@
+# gitleaks config — extends the default ruleset.
+# Allowlists files that legitimately contain literal secret patterns:
+#   - validator source (has SECRET_PATTERNS regex strings)
+#   - the PreToolUse hook that does the same thing
+#   - the tool policy file
+#   - the validator test suite (uses fake-but-pattern-matching values to
+#     prove the validator actually catches real-looking secrets)
+#
+# Keep this list in sync with SCAN_EXCLUDE_FILES in scripts/validate.py.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Files that legitimately reference secret patterns"
+paths = [
+  '''scripts/tests/test_validate\.py''',
+  '''scripts/validate\.py''',
+  '''plugins/base-tools/hooks/block-secrets-on-write\.sh''',
+  '''policy/allowed-tools\.yaml''',
+]
