@@ -2,6 +2,18 @@
 
 This repo is the shared base every team uses to publish Claude Code skills, slash commands, sub-agents, and hooks. Changes are gated by a four-job CI pipeline. Local-first workflow: validate before pushing.
 
+## Linked repositories — read this first
+
+This codebase is mirrored in **two** GitHub repositories that MUST stay byte-for-byte identical: `PerfectoMobileDev/claude-base` and `Blazemeter/claude-base`. You push to one, the auto-sync workflow propagates to the other. A required CI check (`Verify sibling sync`) blocks `main` merges when the two repos diverge.
+
+**Before opening a PR**, confirm:
+
+- You're committing to whichever side is most natural (either is fine — there is no source of truth).
+- You did **not** push directly to the sibling out-of-band; if you did, see `LINKED_REPOS.md` → "Recovery procedure".
+- Workflow files under `.github/workflows/sync-to-sibling.yml` and `verify-sibling-sync.yml` are off-limits except via coordinated PR on **both** repos. Editing them on only one side guarantees drift.
+
+Full contract, race-condition handling, and the one-time PAT / branch-protection setup are in [`LINKED_REPOS.md`](./LINKED_REPOS.md).
+
 ## One-time setup
 
 ```bash

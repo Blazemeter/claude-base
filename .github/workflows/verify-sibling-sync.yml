@@ -1,0 +1,96 @@
+name: Verify sibling sync
+
+on:
+  pull_request:
+    branches: [main]
+  # Also run on push to main so an admin push that bypasses PR is still caught.
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine sibling repository
+        id: sibling
+        env:
+          GH_REPO: ${{ github.repository }}
+        run: |
+          case "$GH_REPO" in
+            PerfectoMobileDev/claude-base)
+              echo "name=Blazemeter/claude-base" >> "$GITHUB_OUTPUT"
+              ;;
+            Blazemeter/claude-base)
+              echo "name=PerfectoMobileDev/claude-base" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Workflow running in unexpected repository '$GH_REPO'. See LINKED_REPOS.md."
+              exit 1
+              ;;
+          esac
+
+      - name: Validate SIBLING_SYNC_TOKEN secret is configured
+        env:
+          TOKEN: ${{ secrets.SIBLING_SYNC_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::SIBLING_SYNC_TOKEN secret is not set. See LINKED_REPOS.md → 'Required secrets'."
+            exit 1
+          fi
+
+      - name: Checkout this repository (full history)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Compare main with sibling main
+        env:
+          SIBLING_NAME: ${{ steps.sibling.outputs.name }}
+          SIBLING_TOKEN: ${{ secrets.SIBLING_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          LOCAL_MAIN="$(git rev-parse origin/main)"
+          echo "This repo (${{ github.repository }}) main: $LOCAL_MAIN"
+
+          SIBLING_URL="https://x-access-token:${SIBLING_TOKEN}@github.com/${SIBLING_NAME}.git"
+          SIBLING_MAIN="$(git ls-remote "$SIBLING_URL" refs/heads/main | awk '{print $1}')"
+          if [ -z "$SIBLING_MAIN" ]; then
+            echo "::error::Sibling $SIBLING_NAME has no 'main' branch. See LINKED_REPOS.md."
+            exit 1
+          fi
+          echo "Sibling   ($SIBLING_NAME) main: $SIBLING_MAIN"
+
+          if [ "$LOCAL_MAIN" = "$SIBLING_MAIN" ]; then
+            echo "OK: main is in sync with sibling."
+            exit 0
+          fi
+
+          # Fetch the sibling's main so we can compare ancestry.
+          git fetch --no-tags --quiet "$SIBLING_URL" refs/heads/main:refs/remotes/sibling/main
+
+          if git merge-base --is-ancestor "$SIBLING_MAIN" "$LOCAL_MAIN"; then
+            echo "Sibling main is an ancestor of this repo's main."
+            echo "This is the expected state right before sync-to-sibling propagates this repo's commits."
+            echo "If sync-to-sibling.yml did not run (or failed) on the previous merge, re-run it manually."
+            exit 0
+          fi
+
+          echo "::error::DRIFT DETECTED."
+          echo "Sibling ${SIBLING_NAME} has commits on main that this repo does not have."
+          echo
+          echo "Commits in sibling main but NOT in this repo:"
+          git log --oneline "$LOCAL_MAIN..sibling/main"
+          echo
+          echo "Recovery procedure: LINKED_REPOS.md → 'Recovery procedure'."
+          echo "Short version:"
+          echo "  git remote add sibling https://github.com/${SIBLING_NAME}.git"
+          echo "  git fetch sibling main"
+          echo "  git checkout main && git merge --ff-only sibling/main"
+          echo "  git push origin main"
+          exit 1

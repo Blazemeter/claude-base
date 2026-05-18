@@ -6,6 +6,15 @@ A project-agnostic [Claude Code](https://docs.claude.com/en/docs/claude-code) pl
 
 > Replace `<owner>` in the badge URL above with the GitHub org once this repo's home is final.
 
+> ## ⚠️ This codebase lives in TWO repositories — they MUST stay in sync
+>
+> This project is published from both:
+>
+> - **PerfectoMobileDev/claude-base** — https://github.com/PerfectoMobileDev/claude-base
+> - **Blazemeter/claude-base** — https://github.com/Blazemeter/claude-base
+>
+> **Every commit on every branch must appear on both.** An auto-mirror GitHub Action propagates pushes from one side to the other; a strict CI check (`Verify sibling sync`) blocks merges to `main` when the two diverge. See [**LINKED_REPOS.md**](./LINKED_REPOS.md) for the contract, the recovery procedure, and the one-time PAT / branch-protection setup.
+
 ## Quick install (for users)
 
 Inside Claude Code:

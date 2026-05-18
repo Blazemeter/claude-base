@@ -1,0 +1,92 @@
+name: Sync to sibling repo
+
+on:
+  push:
+    branches: ['**']
+  delete:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sibling-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Mirror ref to sibling
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]' || github.event_name != 'push'
+    steps:
+      - name: Determine sibling repository
+        id: sibling
+        env:
+          GH_REPO: ${{ github.repository }}
+        run: |
+          case "$GH_REPO" in
+            PerfectoMobileDev/claude-base)
+              echo "name=Blazemeter/claude-base" >> "$GITHUB_OUTPUT"
+              ;;
+            Blazemeter/claude-base)
+              echo "name=PerfectoMobileDev/claude-base" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Workflow running in unexpected repository '$GH_REPO'. See LINKED_REPOS.md."
+              exit 1
+              ;;
+          esac
+
+      - name: Validate SIBLING_SYNC_TOKEN secret is configured
+        env:
+          TOKEN: ${{ secrets.SIBLING_SYNC_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::SIBLING_SYNC_TOKEN secret is not set. See LINKED_REPOS.md → 'Required secrets'."
+            exit 1
+          fi
+
+      - name: Checkout this repository (full history)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Push ref to sibling
+        if: github.event_name == 'push'
+        env:
+          SIBLING_NAME: ${{ steps.sibling.outputs.name }}
+          SIBLING_TOKEN: ${{ secrets.SIBLING_SYNC_TOKEN }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          SIBLING_URL="https://x-access-token:${SIBLING_TOKEN}@github.com/${SIBLING_NAME}.git"
+          BRANCH="${REF#refs/heads/}"
+          SIBLING_SHA="$(git ls-remote "$SIBLING_URL" "refs/heads/$BRANCH" | awk '{print $1}')"
+          if [ "$SIBLING_SHA" = "$SHA" ]; then
+            echo "Sibling $SIBLING_NAME branch $BRANCH already at $SHA — no-op."
+            exit 0
+          fi
+          echo "Force-pushing $BRANCH ($SHA) to $SIBLING_NAME (was $SIBLING_SHA)."
+          git push --force "$SIBLING_URL" "refs/heads/$BRANCH:refs/heads/$BRANCH"
+
+      - name: Delete ref on sibling
+        if: github.event_name == 'delete' && github.event.ref_type == 'branch'
+        env:
+          SIBLING_NAME: ${{ steps.sibling.outputs.name }}
+          SIBLING_TOKEN: ${{ secrets.SIBLING_SYNC_TOKEN }}
+          BRANCH: ${{ github.event.ref }}
+        run: |
+          set -euo pipefail
+          if [ "$BRANCH" = "main" ]; then
+            echo "::error::Refusing to delete protected branch 'main' on sibling."
+            exit 1
+          fi
+          SIBLING_URL="https://x-access-token:${SIBLING_TOKEN}@github.com/${SIBLING_NAME}.git"
+          SIBLING_SHA="$(git ls-remote "$SIBLING_URL" "refs/heads/$BRANCH" | awk '{print $1}')"
+          if [ -z "$SIBLING_SHA" ]; then
+            echo "Sibling $SIBLING_NAME has no branch $BRANCH — nothing to delete."
+            exit 0
+          fi
+          echo "Deleting branch $BRANCH on $SIBLING_NAME (was $SIBLING_SHA)."
+          git push "$SIBLING_URL" --delete "refs/heads/$BRANCH"
