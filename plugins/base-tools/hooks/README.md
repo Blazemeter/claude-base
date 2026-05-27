@@ -37,4 +37,16 @@ In `hooks.json`, the `matcher` field is a regex matched against the tool/command
 - `block-secrets-on-write.sh` — `PreToolUse` guard that blocks writes containing obvious secret patterns.
 - `log-skill-activation.py` — `PreSkill` telemetry, Python.
 
+## STANDARDS enforcement hooks
+
+These implement the three baseline rules in `../../../STANDARDS.md`:
+
+- `enforce-jira-id.sh` — `PreToolUse`/`Bash`. Blocks `git checkout -b`, `git switch -c`, `git branch <name>`, and `gh pr create` when no JIRA key (`[A-Z][A-Z0-9_]+-[0-9]+`) is present.
+- `enforce-claude-attribution.sh` — `PreToolUse`/`Bash`. Blocks `git commit -m …` when the message lacks a `Co-Authored-By: Claude` trailer. Lets `--amend --no-edit` and `--fixup` through.
+- `inject-ai-generated-label.sh` — `PreToolUse`/`mcp__claude_ai_Atlassian_Rovo__createJiraIssue`. Blocks the create call when the `AI_generated` label is missing from `tool_input.labels` (or `tool_input.fields.labels`) and tells Claude to retry with the label added.
+
+All three honour `CLAUDE_STANDARDS_SKIP=1` as an escape hatch; every skip is logged to `${CLAUDE_PLUGIN_DATA}/base-tools/standards-skip.log`.
+
+The server-side counterparts live in `../../../.github/workflows/jira-id-lint.yml` and `claude-attribution-lint.yml` — make those required status checks in branch protection if you want true compulsion.
+
 See `../hooks.json` for how these are wired up.

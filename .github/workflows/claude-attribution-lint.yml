@@ -1,0 +1,91 @@
+name: STANDARDS — Claude attribution lint
+
+# Server-side enforcement for STANDARDS rule 3: every commit on a PR that is
+# labelled `ai-generated` must carry a `Co-Authored-By: Claude` trailer.
+#
+# Only enforces when the PR has the `ai-generated` label, so human PRs are
+# never blocked. Combined with the client-side hook
+# (plugins/base-tools/hooks/enforce-claude-attribution.sh), this catches the
+# case where a hook was bypassed or never installed.
+#
+# Reusable: consumer repos add an invoker like
+#
+#   # .github/workflows/claude-standards.yml
+#   name: claude-standards
+#   on: pull_request
+#   jobs:
+#     claude-attribution:
+#       uses: PerfectoMobileDev/claude-base/.github/workflows/claude-attribution-lint.yml@main
+
+on:
+  workflow_call:
+    inputs:
+      label:
+        description: 'PR label that activates this check. Set to empty string to enforce on ALL PRs.'
+        required: false
+        type: string
+        default: 'ai-generated'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  attribution:
+    name: Claude attribution present
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip if PR is not labelled
+        id: gate
+        env:
+          ACTIVATING_LABEL: ${{ inputs.label }}
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -eu
+          if [ -z "$ACTIVATING_LABEL" ]; then
+            echo "enforce=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if echo "$PR_LABELS" | jq -e --arg L "$ACTIVATING_LABEL" 'any(. == $L)' >/dev/null; then
+            echo "enforce=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "PR is not labelled '$ACTIVATING_LABEL' — skipping."
+            echo "enforce=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        if: steps.gate.outputs.enforce == 'true'
+        with:
+          fetch-depth: 0
+
+      - name: 'Check each commit on the PR for Co-Authored-By: Claude'
+        if: steps.gate.outputs.enforce == 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -eu
+          missing=0
+          # %B = full commit body including trailers. NUL-delimit so multi-line
+          # messages are handled safely.
+          while IFS= read -r -d '' commit; do
+            sha="${commit%% *}"
+            msg="${commit#* }"
+            if ! echo "$msg" | grep -qiE 'Co-Authored-By:[[:space:]]*Claude'; then
+              echo "::error::Commit $sha is missing 'Co-Authored-By: Claude' trailer."
+              missing=$((missing + 1))
+            fi
+          done < <(git log --format='%H %B%x00' "${BASE_SHA}..${HEAD_SHA}")
+
+          if [ "$missing" -gt 0 ]; then
+            echo ""
+            echo "$missing commit(s) on this PR are missing Claude attribution."
+            echo "See STANDARDS.md in PerfectoMobileDev/claude-base for the policy."
+            echo ""
+            echo "Fix options:"
+            echo "  - Squash-merge with a corrected message (preferred for one-off)."
+            echo "  - Rebase locally adding the trailer:"
+            echo "      git rebase -x 'git commit --amend --no-edit --trailer \"Co-Authored-By: Claude <noreply@anthropic.com>\"' \$BASE..HEAD"
+            exit 1
+          fi
+          echo "OK — every commit carries Claude attribution."
