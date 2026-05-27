@@ -21,6 +21,36 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-secrets-on-write.sh"
           }
         ]
+      },
+      {
+        "_comment": "STANDARDS rule 1 — JIRA ID in branch names and PR descriptions.",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/enforce-jira-id.sh"
+          }
+        ]
+      },
+      {
+        "_comment": "STANDARDS rule 3 — Claude attribution on every commit.",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/enforce-claude-attribution.sh"
+          }
+        ]
+      },
+      {
+        "_comment": "STANDARDS rule 2 — AI_generated label on JIRA create.",
+        "matcher": "mcp__claude_ai_Atlassian_Rovo__createJiraIssue",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/inject-ai-generated-label.sh"
+          }
+        ]
       }
     ],
     "PreSkill": [

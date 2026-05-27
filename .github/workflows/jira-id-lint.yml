@@ -1,0 +1,74 @@
+name: STANDARDS — JIRA ID lint
+
+# Server-side enforcement for STANDARDS rule 1: every PR must reference a
+# JIRA key in the branch name OR the PR title OR the PR body.
+#
+# Reusable: consumer repos add a thin invoker like
+#
+#   # .github/workflows/claude-standards.yml
+#   name: claude-standards
+#   on: pull_request
+#   jobs:
+#     jira-id:
+#       uses: PerfectoMobileDev/claude-base/.github/workflows/jira-id-lint.yml@main
+#
+# Add the job as a required status check in branch protection to make this
+# actually unbypassable.
+
+on:
+  workflow_call:
+    inputs:
+      jira_regex:
+        description: 'Regex for matching JIRA keys. Defaults to any uppercase project key.'
+        required: false
+        type: string
+        default: '[A-Z][A-Z0-9_]+-[0-9]+'
+      require_in_title:
+        description: 'If true, the PR title MUST contain the JIRA key (body alone is not enough).'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  jira-id:
+    name: JIRA ID present
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch, title, and body for JIRA key
+        env:
+          JIRA_RE: ${{ inputs.jira_regex }}
+          REQUIRE_IN_TITLE: ${{ inputs.require_in_title }}
+          BRANCH: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -eu
+          echo "Branch: $BRANCH"
+          echo "Title:  $PR_TITLE"
+
+          branch_ok=0
+          title_ok=0
+          body_ok=0
+
+          if echo "$BRANCH"    | grep -Eq "$JIRA_RE"; then branch_ok=1; fi
+          if echo "$PR_TITLE"  | grep -Eq "$JIRA_RE"; then title_ok=1;  fi
+          if echo "$PR_BODY"   | grep -Eq "$JIRA_RE"; then body_ok=1;   fi
+
+          if [ "$REQUIRE_IN_TITLE" = "true" ] && [ "$title_ok" -eq 0 ]; then
+            echo "::error::PR title is missing a JIRA key (pattern /$JIRA_RE/)."
+            echo "Rename the PR to include the JIRA key, e.g. 'MOB-12345: fix foo'."
+            exit 1
+          fi
+
+          if [ "$((branch_ok + title_ok + body_ok))" -eq 0 ]; then
+            echo "::error::No JIRA key found in branch '$BRANCH', PR title, or PR body."
+            echo "Add a JIRA key matching /$JIRA_RE/ to at least one of them."
+            echo "See STANDARDS.md in PerfectoMobileDev/claude-base for the policy."
+            exit 1
+          fi
+
+          echo "OK — JIRA key present (branch=$branch_ok title=$title_ok body=$body_ok)."
