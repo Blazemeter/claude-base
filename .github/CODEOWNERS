@@ -18,3 +18,7 @@
 /plugins/base-tools/hooks/     @claude-base-maintainers
 /LICENSE                       @claude-base-maintainers
 /CONTRIBUTING.md               @claude-base-maintainers
+# Linking contract — see LINKED_REPOS.md. Changes here MUST land in both sibling repos.
+/LINKED_REPOS.md               @claude-base-maintainers
+/.github/workflows/sync-to-sibling.yml      @claude-base-maintainers
+/.github/workflows/verify-sibling-sync.yml  @claude-base-maintainers
