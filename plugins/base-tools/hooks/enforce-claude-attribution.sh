@@ -35,7 +35,10 @@ fi
 # Reject only when -m / -F is used (the message is on the command line). If
 # neither is present, $EDITOR opens — we can't validate that path, and Claude
 # Code never takes it interactively anyway.
-if ! [[ "$cmd" =~ -m|-F|--message|--file ]]; then
+#
+# Matches short-option BUNDLES containing m or F (so `-am`, `-ma`, `-aF` all
+# count, not just bare `-m`), plus the long --message / --file forms.
+if ! [[ "$cmd" =~ (^|[[:space:]])(-[a-zA-Z]*[mF][a-zA-Z]*|--message|--file)([[:space:]=]|$) ]]; then
   exit 0
 fi
 

@@ -14,10 +14,18 @@ rules in context when it works.
 Every branch Claude creates, and every PR Claude opens, must reference a JIRA
 issue.
 
-- **Branch name**: must contain a JIRA key, e.g. `MOB-49737-revert-spring-boot`,
-  `SECVULN-1508-jwt-cleanup`. Pattern: `[A-Z][A-Z0-9_]+-[0-9]+`.
-- **PR title or body**: must contain the same JIRA key. Prefer the title so
-  GitHub/JIRA cross-linking works automatically (`MOB-49737: revert spring-boot`).
+- **At PR open time**, at least *one* of the branch name, PR title, or PR body
+  must contain a JIRA key matching `[A-Z][A-Z0-9_]+-[0-9]+`
+  (e.g. `MOB-49737`, `SECVULN-1508`). The server-side workflow checks all
+  three independently and does **not** require the keys to match across them
+  — that flexibility is intentional so a single multi-ticket PR can list
+  several keys.
+- **Branch creation** (`git checkout -b`, `git switch -c`, `git branch <name>`)
+  is also gated client-side: the new branch name itself must contain a JIRA
+  key. This is stricter than the server check because branch names are the
+  primary handle Claude uses to correlate work across repos.
+- **Prefer the PR title** when you have a choice — GitHub's automatic
+  JIRA-link enrichment keys off the title (e.g. `MOB-49737: revert spring-boot`).
 
 **Why**: lets `gh`, `jira`, and our `multi-repo-ticket-status` skill correlate
 work across repos without manual tagging.
