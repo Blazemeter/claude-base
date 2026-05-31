@@ -60,6 +60,12 @@ claude-base/
 │       │   ├── README.md
 │       │   ├── audit-file-changes.sh
 │       │   ├── block-secrets-on-write.sh
+│       │   ├── block-ec2-cloud-mutations.sh    # Safety: compute is read-only
+│       │   ├── block-datastore-mutations.sh    # Safety: DynamoDB/S3/Redis/Mongo read-only
+│       │   ├── block-shared-branch-git.sh      # Safety: protect master/shared branches
+│       │   ├── block-credentials-in-commit.sh  # Safety: no key files / secrets in commits
+│       │   ├── block-test-skips.sh             # Safety: don't skip failing tests
+│       │   ├── block-hook-bypass.sh            # Safety: don't bypass the hooks
 │       │   └── log-skill-activation.py
 │       └── hooks.json                # Plugin-level event hooks (Pre/Post ToolUse, Skill, etc.)
 ├── policy/
@@ -153,6 +159,17 @@ See `plugins/base-tools/hooks/README.md` for full conventions and the bundled ex
 - `audit-file-changes.sh` — `PostToolUse` logger for Write/Edit calls.
 - `block-secrets-on-write.sh` — `PreToolUse` guard that blocks writes containing obvious secret patterns.
 - `log-skill-activation.py` — `PreSkill` telemetry collector.
+
+**Safety guardrails** (block destructive actions Claude shouldn't take autonomously — see `STANDARDS.md` → "Safety guardrails"):
+
+- `block-ec2-cloud-mutations.sh` — no AWS EC2 / GCP Compute instance create/start/stop/terminate/delete (read-only allowed).
+- `block-datastore-mutations.sh` — no destructive DynamoDB / S3 / Redis / Mongo CLI ops (reads/downloads/dumps allowed).
+- `block-shared-branch-git.sh` — no push to `master`/`main`, no force push / rebase / `reset --hard` on shared branches.
+- `block-credentials-in-commit.sh` — no committing key/credential files or staged secrets.
+- `block-test-skips.sh` — no disabling/skipping failing tests to green CI.
+- `block-hook-bypass.sh` — no `--no-verify`, `core.hooksPath` override, or inlined override prefix to bypass the hooks above.
+
+A human-exported `CLAUDE_SAFETY_OVERRIDE=1` bypasses these for a session (logged to `${CLAUDE_PLUGIN_DATA}/base-tools/safety-override.log`).
 
 ## Adding a second plugin
 

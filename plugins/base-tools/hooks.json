@@ -23,6 +23,66 @@
         ]
       },
       {
+        "_comment": "Safety guardrail — don't disable/skip failing tests to green CI.",
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-test-skips.sh"
+          }
+        ]
+      },
+      {
+        "_comment": "Safety guardrail — no EC2 / GCP compute instance mutations (read-only).",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-ec2-cloud-mutations.sh"
+          }
+        ]
+      },
+      {
+        "_comment": "Safety guardrail — no destructive DynamoDB / S3 / Redis / Mongo ops.",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-datastore-mutations.sh"
+          }
+        ]
+      },
+      {
+        "_comment": "Safety guardrail — protect shared branches (push to master, force, rebase, reset --hard).",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-shared-branch-git.sh"
+          }
+        ]
+      },
+      {
+        "_comment": "Safety guardrail — block committing key/credential files & staged secrets.",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-credentials-in-commit.sh"
+          }
+        ]
+      },
+      {
+        "_comment": "Safety guardrail — don't bypass hooks (--no-verify, core.hooksPath, inlined override).",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-hook-bypass.sh"
+          }
+        ]
+      },
+      {
         "_comment": "STANDARDS rule 1 — JIRA ID in branch names and PR descriptions.",
         "matcher": "Bash",
         "hooks": [

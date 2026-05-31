@@ -17,5 +17,6 @@ paths = [
   '''scripts/tests/test_validate\.py''',
   '''scripts/validate\.py''',
   '''plugins/base-tools/hooks/block-secrets-on-write\.sh''',
+  '''plugins/base-tools/hooks/block-credentials-in-commit\.sh''',
   '''policy/allowed-tools\.yaml''',
 ]

@@ -49,4 +49,17 @@ All three honour `CLAUDE_STANDARDS_SKIP=1` as an escape hatch; every skip is log
 
 The server-side counterparts live in `../../../.github/workflows/jira-id-lint.yml` and `claude-attribution-lint.yml` — make those required status checks in branch protection if you want true compulsion.
 
+## Safety guardrail hooks
+
+These block destructive actions Claude should never take autonomously. See `../../../STANDARDS.md` → "Safety guardrails" for the rationale and the override contract.
+
+- `block-ec2-cloud-mutations.sh` — `PreToolUse`/`Bash`. Blocks mutating `aws ec2` verbs (run/start/stop/terminate/create/delete/modify/…) and `gcloud compute` mutations. Read verbs (`describe-*`/`get-*`/`list`) pass.
+- `block-datastore-mutations.sh` — `PreToolUse`/`Bash`. Blocks destructive/creative DynamoDB, S3 (`rb`/`rm`/`mv`/`sync --delete`/uploads/`s3api` writes), Redis (`redis-cli` writes), and Mongo (`mongoimport`/`mongorestore`, destructive `mongo`/`mongosh` ops). Reads/downloads/dumps pass.
+- `block-shared-branch-git.sh` — `PreToolUse`/`Bash`. Blocks `git push` to `master`/`main`, force push to a shared branch, and `git rebase`/`git reset --hard` while on a shared branch (`master`, `main`, `develop`, `staging`, `prod`, `release/*`, `hotfix/*`).
+- `block-credentials-in-commit.sh` — `PreToolUse`/`Bash`. Blocks `git add`/`git commit` of key/credential files (`id_rsa`, `*.pem`, `*.key`, `*.pfx`, `*.p12`, `*.jks`, `*.keystore`, `*.ppk`, `.env`, AWS `credentials`) and any staged diff matching a secret pattern. *(Allowlisted in `validate.py` + `.gitleaks.toml` because it contains literal secret regexes.)*
+- `block-test-skips.sh` — `PreToolUse`/`Write|Edit`. Blocks adding test-skip annotations (`@Disabled`/`@Ignore`, `pytest.mark.skip`, `.skip(`/`xit`/`xdescribe`/`pending`) in test files, and `-DskipTests`/`maven.test.skip` in build files.
+- `block-hook-bypass.sh` — `PreToolUse`/`Bash`. Blocks `--no-verify`/`git commit -n`, `core.hooksPath` overrides, `HUSKY=0`, `chmod`/`rm` on hook files, and inlined `CLAUDE_*_SKIP=`/`CLAUDE_SAFETY_OVERRIDE=` prefixes.
+
+All six honour a **human-exported** `CLAUDE_SAFETY_OVERRIDE=1` (read from the hook's own environment — Claude cannot self-bypass by inlining it); every override is logged to `${CLAUDE_PLUGIN_DATA}/base-tools/safety-override.log`.
+
 See `../hooks.json` for how these are wired up.
