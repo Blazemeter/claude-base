@@ -38,7 +38,10 @@ reject() {
 }
 
 # --- Build-level test disabling (any file) ----------------------------------
-if echo "$content" | grep -Eq -- '-DskipTests|-Dmaven\.test\.skip|<skipTests>[[:space:]]*true|<maven\.test\.skip>[[:space:]]*true|maven\.test\.skip[[:space:]]*=[[:space:]]*true'; then
+# Match only the SKIP-ENABLING forms: a bare `-DskipTests` / `-Dmaven.test.skip`
+# (implicitly true) or an explicit `=true`. An explicit `=false` re-enables
+# tests and must NOT be blocked, so the trailing boundary excludes `=`.
+if echo "$content" | grep -Eq -- '(-DskipTests|-Dmaven\.test\.skip)(=true)?([^A-Za-z0-9=]|$)|<skipTests>[[:space:]]*true|<maven\.test\.skip>[[:space:]]*true|maven\.test\.skip[[:space:]]*=[[:space:]]*true'; then
   reject "build config disables test execution (skipTests / maven.test.skip)."
 fi
 

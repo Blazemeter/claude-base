@@ -22,7 +22,7 @@ cmd="$(echo "$payload" | jq -r '.tool_input.command // ""')"
 
 # Inlined override attempts are caught BEFORE honoring the env override, so a
 # human exporting the var still works but Claude inlining it does not.
-if [[ "$cmd" =~ (^|[[:space:]])(CLAUDE_STANDARDS_SKIP|CLAUDE_SAFETY_OVERRIDE)= ]]; then
+if [[ "$cmd" =~ (^|[[:space:];&|])(CLAUDE_STANDARDS_SKIP|CLAUDE_SAFETY_OVERRIDE)= ]]; then
   echo "claude-base SAFETY guardrail: refusing an inlined override" >&2
   echo "(CLAUDE_STANDARDS_SKIP= / CLAUDE_SAFETY_OVERRIDE= as a command prefix)." >&2
   echo "" >&2
@@ -47,12 +47,14 @@ reject() {
   exit 1
 }
 
+# Boundaries also recognize shell command separators (; & |) so a bypass token
+# is not smuggled past with e.g. `git commit --no-verify; git status`.
 # --no-verify on commit/push.
-if [[ "$cmd" =~ (^|[[:space:]])--no-verify([[:space:]]|$) ]]; then
+if [[ "$cmd" =~ (^|[[:space:];&|])--no-verify([[:space:];&|]|$) ]]; then
   reject "--no-verify skips git hooks — blocked."
 fi
 # `git commit -n` (short for --no-verify). Matches short-option bundles with n.
-if [[ "$cmd" =~ git[[:space:]]+commit ]] && [[ "$cmd" =~ (^|[[:space:]])-[a-zA-Z]*n[a-zA-Z]*([[:space:]]|$) ]]; then
+if [[ "$cmd" =~ git[[:space:]]+commit ]] && [[ "$cmd" =~ (^|[[:space:];&|])-[a-zA-Z]*n[a-zA-Z]*([[:space:];&|]|$) ]]; then
   reject "'git commit -n' skips hooks — blocked."
 fi
 # Redirecting / disabling the hooks path.
@@ -60,7 +62,7 @@ if [[ "$cmd" =~ core\.hooksPath ]]; then
   reject "overriding core.hooksPath disables repo hooks — blocked."
 fi
 # Husky escape hatches.
-if [[ "$cmd" =~ (^|[[:space:]])HUSKY=0([[:space:]]|$) ]] || [[ "$cmd" =~ HUSKY_SKIP_HOOKS ]]; then
+if [[ "$cmd" =~ (^|[[:space:];&|])HUSKY=0([[:space:];&|]|$) ]] || [[ "$cmd" =~ HUSKY_SKIP_HOOKS ]]; then
   reject "disabling Husky hooks (HUSKY=0 / HUSKY_SKIP_HOOKS) — blocked."
 fi
 # Tampering with hook files.

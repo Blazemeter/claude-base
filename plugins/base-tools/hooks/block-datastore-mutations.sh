@@ -47,14 +47,28 @@ if [[ "$cmd" =~ aws[[:space:]]+s3[[:space:]]+sync ]] && [[ "$cmd" =~ (^|[[:space
   reject "S3 'sync --delete' can remove objects — blocked."
 fi
 # `aws s3 cp <local> s3://...` is an upload (creates objects). Block when the
-# last positional argument is an s3:// URI; downloads (s3:// first) pass.
+# DESTINATION (last positional) is an s3:// URI; downloads (s3:// source) pass.
+# Options that take a value (e.g. --exclude '*.txt', --sse, --metadata) must NOT
+# be mistaken for positionals, or an upload could slip past by appending one
+# after the destination. We therefore skip the value following any non-boolean
+# option; a small allowlist of store-true flags do NOT consume a value.
 if [[ "$cmd" =~ aws[[:space:]]+s3[[:space:]]+cp([[:space:]]|$) ]]; then
   read -ra _toks <<< "$cmd"
   _seen_aws=0 _seen_s3=0 _seen_cp=0
+  _skip_next=0
   _pos=()
+  # store-true flags for `aws s3 cp` — these do not take a following value.
+  _bool_re='^--(dryrun|quiet|recursive|no-progress|follow-symlinks|no-follow-symlinks|no-guess-mime-type|only-show-errors|ignore-glacier-warnings|force-glacier-transfer|debug|no-sign-request|no-verify-ssl|no-paginate)$'
   for t in "${_toks[@]}"; do
     if [ "$_seen_cp" = 1 ]; then
-      [[ "$t" == -* ]] || _pos+=("$t")
+      if [ "$_skip_next" = 1 ]; then _skip_next=0; continue; fi
+      if [[ "$t" == -* ]]; then
+        # A long/short option with no inline `=value` consumes the next token
+        # as its value, unless it is a known boolean (store-true) flag.
+        if [[ "$t" != *=* ]] && ! [[ "$t" =~ $_bool_re ]]; then _skip_next=1; fi
+        continue
+      fi
+      _pos+=("$t")
       continue
     fi
     if [ "$_seen_aws" = 1 ] && [ "$_seen_s3" = 1 ] && [ "$t" = "cp" ]; then _seen_cp=1; continue; fi

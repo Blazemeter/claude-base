@@ -47,9 +47,13 @@ if [[ "$cmd" =~ aws[[:space:]]+ec2[[:space:]]+${ec2_mut} ]]; then
 fi
 
 # --- Google Cloud Compute ---------------------------------------------------
-# gcloud compute <resource> <action>; block mutating actions.
-gcp_mut='(create|delete|start|stop|reset|update|resize|move|suspend|resume|add-[a-z-]+|remove-[a-z-]+|set-[a-z-]+|attach-[a-z-]+|detach-[a-z-]+)'
-if [[ "$cmd" =~ gcloud[[:space:]]+compute[[:space:]]+[a-z-]+[[:space:]]+${gcp_mut}([[:space:]]|$) ]]; then
+# gcloud compute <resource>[ <sub-group>...] <action>; block mutating actions.
+# Resource paths can be nested (e.g. `compute instance-groups managed
+# delete-instances`), so allow one OR MORE resource/group tokens before the
+# action verb. Verbs cover the hyphenated forms (create-instances,
+# delete-instances, recreate-instances, set-*, etc.) as well as the bare ones.
+gcp_mut='(create|delete|start|stop|reset|recreate|update|resize|move|suspend|resume|abandon|rollback|create-[a-z-]+|delete-[a-z-]+|update-[a-z-]+|recreate-[a-z-]+|abandon-[a-z-]+|reset-[a-z-]+|rolling-[a-z-]+|add-[a-z-]+|remove-[a-z-]+|set-[a-z-]+|attach-[a-z-]+|detach-[a-z-]+)'
+if [[ "$cmd" =~ gcloud[[:space:]]+compute[[:space:]]+([a-z-]+[[:space:]]+)+${gcp_mut}([[:space:]]|$) ]]; then
   reject "Google Cloud Compute mutating command blocked."
 fi
 

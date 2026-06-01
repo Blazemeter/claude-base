@@ -54,7 +54,7 @@ mentions_shared=0
 if [[ "$cmd" =~ (^|[[:space:]:/])(master|main|develop|development|staging|production|prod)([[:space:]]|$) ]]; then
   mentions_shared=1
 fi
-if [[ "$cmd" =~ (^|[[:space:]])(release|hotfix)/ ]]; then
+if [[ "$cmd" =~ (^|[[:space:]:/])(release|hotfix)/ ]]; then
   mentions_shared=1
 fi
 mentions_master_main=0
