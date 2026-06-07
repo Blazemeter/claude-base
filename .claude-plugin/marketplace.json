@@ -12,6 +12,14 @@
       "version": "0.1.0",
       "keywords": ["base", "templates", "skills", "commands", "agents", "hooks", "starter"],
       "category": "templates"
+    },
+    {
+      "name": "reporting-ui",
+      "source": "./plugins/reporting-ui",
+      "description": "Developer-loop skills and the Claude-owned CI orchestrator for the Perfecto reporting-ui monorepo: pre-push verification and PR opening that follow the repo's npm-workspace, branch-naming, and PR-template conventions.",
+      "version": "0.1.0",
+      "keywords": ["reporting-ui", "perfecto", "monorepo", "pull-request", "ci", "jenkins", "orchestrator"],
+      "category": "project"
     }
   ]
 }

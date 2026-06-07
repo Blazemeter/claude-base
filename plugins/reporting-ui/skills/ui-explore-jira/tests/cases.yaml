@@ -1,0 +1,25 @@
+# Behavioral test cases for ui-explore-jira.
+#
+# Run with:
+#   python scripts/behavioral_runner.py --skill reporting-ui/ui-explore-jira
+#
+# `--lint` only validates this file's structure; real API runs are opt-in
+# (require ANTHROPIC_API_KEY).
+
+skill: reporting-ui/ui-explore-jira
+cases:
+  - name: bare-key-triggers-skill
+    prompt: "Explore MOB-1234 for me."
+    expected:
+      response_must_contain: ["MOB-1234"]
+      response_must_not_contain: ["I cannot", "I don't have access"]
+
+  - name: browse-url-triggers-skill
+    prompt: "What's in https://perforce.atlassian.net/browse/MOB-49239 ?"
+    expected:
+      response_must_contain: ["MOB-49239"]
+
+  - name: create-issue-does-not-trigger
+    prompt: "Create a new Jira bug titled 'login broken'."
+    expected:
+      response_must_not_contain: ["### Acceptance criteria"]

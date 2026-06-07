@@ -1,0 +1,25 @@
+# Behavioral test cases for ui-run-checks.
+#
+# Run with:
+#   python scripts/behavioral_runner.py --skill reporting-ui/ui-run-checks
+#
+# `--lint` only validates this file's structure; real API runs are opt-in
+# (require ANTHROPIC_API_KEY).
+
+skill: reporting-ui/ui-run-checks
+cases:
+  - name: verify-before-push-triggers-skill
+    prompt: "Can you verify this branch is ready before I push it?"
+    expected:
+      response_must_contain: ["lint", "prettier"]
+      response_must_not_contain: ["I cannot", "I don't have access"]
+
+  - name: will-ci-pass-triggers-skill
+    prompt: "Will CI pass for what I've changed? Run the pre-push checks."
+    expected:
+      response_must_contain: ["jest"]
+
+  - name: single-named-test-does-not-trigger-full-gate
+    prompt: "Just run the FooView jest test for me."
+    expected:
+      response_must_not_contain: ["Verdict: READY TO PUSH"]

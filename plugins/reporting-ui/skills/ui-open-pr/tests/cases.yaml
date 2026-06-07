@@ -1,0 +1,25 @@
+# Behavioral test cases for ui-open-pr.
+#
+# Run with:
+#   python scripts/behavioral_runner.py --skill reporting-ui/ui-open-pr
+#
+# `--lint` only validates this file's structure; real API runs are opt-in
+# (require ANTHROPIC_API_KEY).
+
+skill: reporting-ui/ui-open-pr
+cases:
+  - name: open-a-pr-triggers-skill
+    prompt: "Open a PR for this branch please."
+    expected:
+      response_must_contain: ["pull_request_template", "master"]
+      response_must_not_contain: ["I cannot", "I don't have access"]
+
+  - name: raise-pr-runs-gate-first
+    prompt: "Raise a PR for my changes and submit it for review."
+    expected:
+      response_must_contain: ["ui-run-checks"]
+
+  - name: summarize-existing-pr-does-not-trigger
+    prompt: "Summarize what's in PR #4123 for me."
+    expected:
+      response_must_not_contain: ["gh pr create"]
