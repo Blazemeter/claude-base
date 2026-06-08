@@ -11,8 +11,8 @@ LOG_FILE="$LOG_DIR/audit.log"
 mkdir -p "$LOG_DIR"
 
 payload="$(cat)"
-tool="$(echo "$payload" | jq -r '.tool_name // "unknown"')"
-target="$(echo "$payload" | jq -r '.tool_input.file_path // .tool_input.notebook_path // "n/a"')"
+tool="$(printf '%s' "$payload" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("tool_name") or "unknown")')"
+target="$(printf '%s' "$payload" | python3 -c 'import sys,json; ti=json.load(sys.stdin).get("tool_input",{}); print(ti.get("file_path") or ti.get("notebook_path") or "n/a")')"
 ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 echo "[$ts] $tool $target" >> "$LOG_FILE"
