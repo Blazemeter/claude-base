@@ -1,0 +1,53 @@
+name: Auto-bump plugin version
+
+# Runs after every merge to main and increments the patch version in
+# plugin.json. Requires branch protection to allow github-actions[bot]
+# to bypass the PR requirement:
+#   Settings → Branches → main → Allow specified actors to bypass →
+#   add "github-actions[bot]"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/**'
+      - '!plugins/**/plugin.json'   # don't re-trigger on the bump commit itself
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    # Extra guard: skip if this push is itself a version bump
+    if: "!startsWith(github.event.head_commit.message, 'chore: bump')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          FILE="plugins/base-tools/.claude-plugin/plugin.json"
+          current=$(python3 -c "import json; print(json.load(open('$FILE'))['version'])")
+          IFS='.' read -r major minor patch <<< "$current"
+          new="$major.$minor.$((patch + 1))"
+          python3 -c "
+          import json
+          with open('$FILE') as f:
+              d = json.load(f)
+          d['version'] = '$new'
+          with open('$FILE', 'w') as f:
+              json.dump(d, f, indent=2)
+              f.write('\n')
+          "
+          echo "version=$new" >> "\$GITHUB_OUTPUT"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add plugins/base-tools/.claude-plugin/plugin.json
+          git commit -m "chore: bump base-tools to ${{ steps.bump.outputs.version }}"
+          git push
