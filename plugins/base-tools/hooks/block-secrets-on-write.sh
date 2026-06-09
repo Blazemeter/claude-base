@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse hook for Write|Edit — blocks the call if obvious secret patterns
-# appear in the new content. Non-zero exit code = block.
+# appear in the new content. Exit 2 = block; exit 0 = allow.
 #
 # This is illustrative, not exhaustive. Replace with `gitleaks --pipe` or
 # similar for production-grade scanning.
@@ -26,7 +26,7 @@ for re in "${patterns[@]}"; do
   if echo "$content" | grep -E -i -q -e "$re"; then
     echo "base-tools hook: blocked — content matches secret pattern /$re/" >&2
     echo "If this is a false positive, edit plugins/base-tools/hooks/block-secrets-on-write.sh." >&2
-    exit 1
+    exit 2
   fi
 done
 
