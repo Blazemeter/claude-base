@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# PreToolUse hook for Bash — enforces JIRA ID presence on branch creation and
-# `gh pr create` commands. See ../../../STANDARDS.md rule 1.
+# PreToolUse hook for Bash — enforces JIRA ID presence on branch creation,
+# new-branch pushes, and `gh pr create` commands. See ../../../STANDARDS.md rule 1.
 #
 # Matchers (in hooks.json) fire on every Bash call; this script then inspects
 # tool_input.command and only acts on the relevant subcommands.
@@ -11,7 +11,7 @@ LOG_DIR="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}}/base-tools"
 mkdir -p "$LOG_DIR"
 
 payload="$(cat)"
-cmd="$(echo "$payload" | jq -r '.tool_input.command // ""')"
+cmd="$(printf '%s' "$payload" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("tool_input",{}).get("command",""))')"
 
 # Escape hatch — log every use so abuse is auditable.
 if [ "${CLAUDE_STANDARDS_SKIP:-0}" = "1" ]; then
@@ -32,7 +32,7 @@ reject() {
   echo "" >&2
   echo "See STANDARDS.md at the root of claude-base, or set" >&2
   echo "CLAUDE_STANDARDS_SKIP=1 if this is a no-ticket chore (logged & audited)." >&2
-  exit 1
+  exit 2
 }
 
 # --- Branch creation ---------------------------------------------------------
@@ -51,6 +51,19 @@ fi
 if [ -n "$branch_name" ]; then
   if ! [[ "$branch_name" =~ $JIRA_RE ]]; then
     reject "branch name '$branch_name' does not contain a JIRA key."
+  fi
+fi
+
+# --- New-branch push ---------------------------------------------------------
+# Matches: git push -u origin NAME, git push --set-upstream origin NAME
+push_branch=""
+if [[ "$cmd" =~ git[[:space:]]+push[[:space:]]+(.*[[:space:]])?(-u|--set-upstream)[[:space:]]+[^[:space:]]+[[:space:]]+([^[:space:]]+) ]]; then
+  push_branch="${BASH_REMATCH[3]}"
+fi
+
+if [ -n "$push_branch" ]; then
+  if ! [[ "$push_branch" =~ $JIRA_RE ]]; then
+    reject "push branch '$push_branch' does not contain a JIRA key."
   fi
 fi
 

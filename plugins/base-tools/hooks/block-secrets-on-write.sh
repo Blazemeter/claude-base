@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse hook for Write|Edit — blocks the call if obvious secret patterns
-# appear in the new content. Exit 2 = block; exit 0 = allow.
+# appear in the new content. Non-zero exit code = block.
 #
 # This is illustrative, not exhaustive. Replace with `gitleaks --pipe` or
 # similar for production-grade scanning.
@@ -8,7 +8,7 @@
 set -euo pipefail
 
 payload="$(cat)"
-content="$(echo "$payload" | jq -r '.tool_input.new_string // .tool_input.content // ""')"
+content="$(printf '%s' "$payload" | python3 -c 'import sys,json; ti=json.load(sys.stdin).get("tool_input",{}); print(ti.get("new_string") or ti.get("content") or "")')"
 
 # Patterns to block (case-insensitive). Tune for your project.
 # Patterns target *assignments* / actual secret material, not bare env-var
@@ -23,7 +23,7 @@ patterns=(
 )
 
 for re in "${patterns[@]}"; do
-  if echo "$content" | grep -E -i -q -e "$re"; then
+  if printf '%s' "$content" | grep -E -i -q -e "$re"; then
     echo "base-tools hook: blocked — content matches secret pattern /$re/" >&2
     echo "If this is a false positive, edit plugins/base-tools/hooks/block-secrets-on-write.sh." >&2
     exit 2
