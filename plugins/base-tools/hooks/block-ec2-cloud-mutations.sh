@@ -6,7 +6,7 @@
 # Why: spinning up or tearing down instances costs money and can take prod
 # capacity offline. Claude gets read access to inspect; humans create/destroy.
 #
-# Non-zero exit = block. Honors a HUMAN-exported CLAUDE_SAFETY_OVERRIDE=1
+# Exit 2 = block. Honors a HUMAN-exported CLAUDE_SAFETY_OVERRIDE=1
 # (read from this hook's own environment — Claude inlining the var as a command
 # prefix does NOT set it here, so it cannot self-bypass).
 
@@ -35,7 +35,7 @@ reject() {
   echo "CLAUDE_SAFETY_OVERRIDE=1 in your shell for this session (logged &" >&2
   echo "audited). Do NOT inline it as a command prefix and do NOT try to" >&2
   echo "bypass this hook. See STANDARDS.md 'Safety guardrails'." >&2
-  exit 1
+  exit 2
 }
 
 # --- AWS EC2 ----------------------------------------------------------------

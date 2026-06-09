@@ -9,7 +9,7 @@
 #     prefix (the override is meant to be EXPORTED by a human, not inlined)
 # See ../../../STANDARDS.md "Safety guardrails".
 #
-# Non-zero exit = block. A human-exported CLAUDE_SAFETY_OVERRIDE=1 (read from
+# Exit 2 = block. A human-exported CLAUDE_SAFETY_OVERRIDE=1 (read from
 # this hook's own env, not the command string) lets legitimate human use through.
 
 set -euo pipefail
@@ -29,7 +29,7 @@ if [[ "$cmd" =~ (^|[[:space:];&|])(CLAUDE_STANDARDS_SKIP|CLAUDE_SAFETY_OVERRIDE)
   echo "These overrides exist for HUMANS to export in their own shell, with" >&2
   echo "every use logged. Inlining them is a hook bypass. Surface the blocked" >&2
   echo "action to a human instead of working around the guardrail." >&2
-  exit 1
+  exit 2
 fi
 
 if [ "${CLAUDE_SAFETY_OVERRIDE:-0}" = "1" ]; then
@@ -44,7 +44,7 @@ reject() {
   echo "Don't bypass a failing hook — it fired for a reason. Fix the underlying" >&2
   echo "issue, or surface the block to a human. If a human decides to override," >&2
   echo "they export CLAUDE_SAFETY_OVERRIDE=1 in their shell (logged & audited)." >&2
-  exit 1
+  exit 2
 }
 
 # Boundaries also recognize shell command separators (; & |) so a bypass token

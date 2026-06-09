@@ -8,7 +8,7 @@
 # same as a cover-up. So this blocks and asks a human to confirm via the
 # override; it does not silently allow.
 #
-# Non-zero exit = block. Honors a HUMAN-exported CLAUDE_SAFETY_OVERRIDE=1.
+# Exit 2 = block. Honors a HUMAN-exported CLAUDE_SAFETY_OVERRIDE=1.
 
 set -euo pipefail
 
@@ -34,7 +34,7 @@ reject() {
   echo "the code under test. If a test must be quarantined (e.g. a tracked" >&2
   echo "flaky), a human should confirm: export CLAUDE_SAFETY_OVERRIDE=1 in your" >&2
   echo "shell (logged & audited) and reference the tracking ticket in the diff." >&2
-  exit 1
+  exit 2
 }
 
 # --- Build-level test disabling (any file) ----------------------------------

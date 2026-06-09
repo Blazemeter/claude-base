@@ -7,7 +7,7 @@
 # Shared = master, main, develop[ment], staging, prod[uction], release/*, hotfix/*.
 # See ../../../STANDARDS.md "Safety guardrails".
 #
-# Non-zero exit = block. Honors a HUMAN-exported CLAUDE_SAFETY_OVERRIDE=1.
+# Exit 2 = block. Honors a HUMAN-exported CLAUDE_SAFETY_OVERRIDE=1.
 
 set -euo pipefail
 
@@ -36,7 +36,7 @@ reject() {
   echo "If a human truly needs this, export CLAUDE_SAFETY_OVERRIDE=1 in your" >&2
   echo "shell (logged & audited). Do NOT --no-verify or otherwise bypass the" >&2
   echo "hook. Server-side branch protection should enforce this too." >&2
-  exit 1
+  exit 2
 }
 
 # Current branch (empty if not in a work tree / detached).

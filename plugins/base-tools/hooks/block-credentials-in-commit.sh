@@ -10,7 +10,7 @@
 # This file intentionally contains literal secret REGEX patterns, so it is
 # allowlisted in scripts/validate.py (SCAN_EXCLUDE_FILES) and .gitleaks.toml.
 #
-# Non-zero exit = block. Honors a HUMAN-exported CLAUDE_SAFETY_OVERRIDE=1.
+# Exit 2 = block. Honors a HUMAN-exported CLAUDE_SAFETY_OVERRIDE=1.
 
 set -euo pipefail
 
@@ -44,7 +44,7 @@ reject() {
   echo "Remove the file/secret from the index (git restore --staged <f>), add" >&2
   echo "it to .gitignore, and move real secrets to your secret manager. If this" >&2
   echo "is a deliberate test fixture, export CLAUDE_SAFETY_OVERRIDE=1 (logged)." >&2
-  exit 1
+  exit 2
 }
 
 is_forbidden_path() {

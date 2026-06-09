@@ -5,7 +5,7 @@
 # deletes are blocked even in dev/staging. See ../../../STANDARDS.md
 # "Safety guardrails".
 #
-# Non-zero exit = block. Honors a HUMAN-exported CLAUDE_SAFETY_OVERRIDE=1.
+# Exit 2 = block. Honors a HUMAN-exported CLAUDE_SAFETY_OVERRIDE=1.
 
 set -euo pipefail
 
@@ -30,7 +30,7 @@ reject() {
   echo "" >&2
   echo "Ask a human, or — if you ARE the human — export CLAUDE_SAFETY_OVERRIDE=1" >&2
   echo "in your shell (logged & audited). Do NOT inline it or bypass the hook." >&2
-  exit 1
+  exit 2
 }
 
 # --- DynamoDB ---------------------------------------------------------------
