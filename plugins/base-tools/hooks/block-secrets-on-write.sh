@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse hook for Write|Edit — blocks the call if obvious secret patterns
-# appear in the new content. Non-zero exit code = block.
+# appear in the new content. Exit 2 = block; exit 0 = allow.
 #
 # This is illustrative, not exhaustive. Replace with `gitleaks --pipe` or
 # similar for production-grade scanning.

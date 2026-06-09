@@ -1,6 +1,6 @@
 {
   "name": "base-tools",
   "description": "Generic skill, slash-command, sub-agent, and hook templates for any Claude Code marketplace. Includes working hook examples.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "license": "MIT"
 }

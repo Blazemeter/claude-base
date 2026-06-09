@@ -110,6 +110,7 @@ SCAN_EXCLUDE_FILES = {
     "scripts/validate.py",
     "scripts/tests/test_validate.py",
     "plugins/base-tools/hooks/block-secrets-on-write.sh",
+    "plugins/base-tools/hooks/block-credentials-in-commit.sh",
 }
 
 ERROR = "ERROR"
