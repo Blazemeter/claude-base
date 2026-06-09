@@ -23,7 +23,7 @@ patterns=(
 )
 
 for re in "${patterns[@]}"; do
-  if echo "$content" | grep -E -i -q "$re"; then
+  if echo "$content" | grep -E -i -q -e "$re"; then
     echo "base-tools hook: blocked — content matches secret pattern /$re/" >&2
     echo "If this is a false positive, edit plugins/base-tools/hooks/block-secrets-on-write.sh." >&2
     exit 1
