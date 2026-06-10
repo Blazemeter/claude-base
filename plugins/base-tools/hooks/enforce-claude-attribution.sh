@@ -11,7 +11,7 @@ LOG_DIR="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}}/base-tools"
 mkdir -p "$LOG_DIR"
 
 payload="$(cat)"
-cmd="$(echo "$payload" | jq -r '.tool_input.command // ""')"
+cmd="$(printf '%s' "$payload" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("tool_input",{}).get("command",""))')"
 
 if [ "${CLAUDE_STANDARDS_SKIP:-0}" = "1" ]; then
   ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -55,4 +55,4 @@ echo "stripped it, please add it back so 'git log --grep' can find Claude" >&2
 echo "authored commits." >&2
 echo "" >&2
 echo "Set CLAUDE_STANDARDS_SKIP=1 to bypass (logged & audited)." >&2
-exit 1
+exit 2

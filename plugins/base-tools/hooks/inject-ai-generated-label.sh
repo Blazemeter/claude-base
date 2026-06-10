@@ -24,12 +24,12 @@ fi
 # Labels live under tool_input.labels (an array). Some Rovo MCP shapes nest
 # fields under tool_input.fields.labels — handle both.
 has_label="$(
-  echo "$payload" | jq -r '
-    [
-      (.tool_input.labels // [])[],
-      (.tool_input.fields.labels // [])[]
-    ] | map(ascii_downcase) | index("ai_generated") // empty
-  '
+  printf '%s' "$payload" | python3 -c '
+import sys, json
+ti = json.load(sys.stdin).get("tool_input", {}) or {}
+labels = list(ti.get("labels") or []) + list((ti.get("fields") or {}).get("labels") or [])
+print("yes" if any(str(l).lower() == "ai_generated" for l in labels) else "")
+'
 )"
 
 if [ -n "$has_label" ]; then
@@ -44,4 +44,4 @@ echo "" >&2
 echo "This is how the JIRA Ops team audits Claude-filed tickets. See" >&2
 echo "STANDARDS.md at the root of claude-base. Set CLAUDE_STANDARDS_SKIP=1" >&2
 echo "to bypass (logged & audited)." >&2
-exit 1
+exit 2
