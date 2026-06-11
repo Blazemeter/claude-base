@@ -1,0 +1,41 @@
+# Documentation-planning task configuration (STANDARDS rule #4).
+#
+# Consumed by the base-tools `file-doc-task` skill. Each team that forks
+# claude-base inherits this file; override the values for your org's JIRA.
+#
+# The skill REFUSES to create a ticket while `project_key` is the unset
+# placeholder below — this is deliberate (we never guess a JIRA project).
+
+# --- REQUIRED: set before the skill can file tickets ---------------------
+# JIRA project the documentation-planning tickets are created in.
+# TODO(doc-team): replace with the real doc project key (e.g. "DOC", "TW").
+project_key: "__UNSET__"
+
+# Issue type for the doc-planning ticket.
+# TODO(doc-team): confirm with the docs team — Task / Story / Documentation.
+issue_type: "Task"
+
+# --- Fixed by the doc-team standard (do not change without docs sign-off) -
+# Title prefix — final summary is "<title_prefix><customer-facing feature name>".
+title_prefix: "DOC-ready: "
+
+# Label applied to every doc-planning ticket.
+label: "ready-for-docs"
+
+# How the doc task is linked back to the engineering ticket.
+# TODO(doc-team): confirm preferred link type (relates to / blocks / is blocked by).
+link_type: "relates to"
+
+# Optional defaults — leave blank to omit.
+component: ""        # e.g. "Documentation"
+default_assignee: "" # e.g. a docs-triage account; blank = unassigned/triage queue
+
+# --- Trigger scope (STANDARDS rule #4) -----------------------------------
+# The skill only runs the doc-required gate for these change classes.
+# Pure refactors / internal fixes / build chores are out of scope.
+applies_to:
+  - feature
+  - user-facing-change
+
+# The gate always asks a human; it never auto-decides that docs are required.
+require_human_confirmation: true
