@@ -22,6 +22,15 @@ fi
 
 # JIRA key pattern — matches any uppercase project key with a numeric suffix.
 JIRA_RE='[A-Z][A-Z0-9_]+-[0-9]+'
+# Placeholder pattern — an all-zero numeric suffix (MOB-00000, MOB-0, …).
+# These satisfy JIRA_RE but point at no real issue, so they must be rejected.
+PLACEHOLDER_RE='^[A-Z][A-Z0-9_]+-0+$'
+
+# True (exit 0) when $1 contains at least one *real* (non-all-zero) JIRA key.
+# Extracts every key it can find and checks that at least one is not a placeholder.
+has_real_jira_key() {
+  printf '%s' "$1" | grep -oE "$JIRA_RE" | grep -qvE "$PLACEHOLDER_RE"
+}
 
 reject() {
   echo "claude-base STANDARDS rule 1: $1" >&2
@@ -32,6 +41,22 @@ reject() {
   echo "" >&2
   echo "See STANDARDS.md at the root of claude-base, or set" >&2
   echo "CLAUDE_STANDARDS_SKIP=1 if this is a no-ticket chore (logged & audited)." >&2
+  exit 2
+}
+
+reject_placeholder() {
+  echo "claude-base STANDARDS rule 1: $1" >&2
+  echo "" >&2
+  echo "'MOB-00000' (or any all-zero key) is a placeholder, not a real issue —" >&2
+  echo "work tracked against it has no Jira traceability. Create the task FIRST," >&2
+  echo "then reference its real key:" >&2
+  echo "" >&2
+  echo "  * Claude-tooling work (claude-base / reporting-claude) lives under the" >&2
+  echo "    AIDLC Epic MOB-50371 — create a child Task and link it via" >&2
+  echo "    customfield_10014=MOB-50371 (the 'jira' skill does this for you)." >&2
+  echo "  * Then: gh pr create --title 'MOB-<real>: …' …" >&2
+  echo "" >&2
+  echo "Set CLAUDE_STANDARDS_SKIP=1 only for a genuine no-ticket chore (logged & audited)." >&2
   exit 2
 }
 
@@ -51,6 +76,8 @@ fi
 if [ -n "$branch_name" ]; then
   if ! [[ "$branch_name" =~ $JIRA_RE ]]; then
     reject "branch name '$branch_name' does not contain a JIRA key."
+  elif ! has_real_jira_key "$branch_name"; then
+    reject_placeholder "branch name '$branch_name' only carries a placeholder JIRA key."
   fi
 fi
 
@@ -64,6 +91,8 @@ fi
 if [ -n "$push_branch" ]; then
   if ! [[ "$push_branch" =~ $JIRA_RE ]]; then
     reject "push branch '$push_branch' does not contain a JIRA key."
+  elif ! has_real_jira_key "$push_branch"; then
+    reject_placeholder "push branch '$push_branch' only carries a placeholder JIRA key."
   fi
 fi
 
@@ -73,6 +102,8 @@ if [[ "$cmd" =~ gh[[:space:]]+pr[[:space:]]+create ]]; then
   # and HEREDOCs that get inlined into the command.
   if ! [[ "$cmd" =~ $JIRA_RE ]]; then
     reject "gh pr create call does not contain a JIRA key in title or body."
+  elif ! has_real_jira_key "$cmd"; then
+    reject_placeholder "gh pr create call references only a placeholder JIRA key."
   fi
 fi
 
