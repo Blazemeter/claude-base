@@ -1,6 +1,6 @@
 # Claude marketplace standards
 
-Single source of truth for the three baseline rules every Claude-driven action
+Single source of truth for the four baseline rules every Claude-driven action
 in our orgs must follow. Enforced by hooks in `plugins/base-tools/` (client
 side) and by reusable GitHub Actions in `.github/workflows/` (server side).
 
@@ -67,11 +67,48 @@ query. Reviewers can spot Claude-authored changes at a glance.
   check, only enforced when the PR carries the `ai-generated` label so
   humans aren't blocked).
 
+## 4. Documentation-planning task for customer-facing work
+
+Every Claude-driven development workflow that ships a **feature** or a
+**user-facing change** must assess whether the change needs customer-facing
+documentation, and — **only when it does** — file a documentation-planning
+JIRA task linked to the engineering ticket.
+
+- **Scope**: features and user-visible behavior changes only. Pure refactors,
+  internal-only fixes, test-only changes, and build/dependency chores are out
+  of scope and must not generate a doc task.
+- **Human-gated, not automatic**: the workflow asks the developer whether the
+  change requires customer-facing documentation. A confirmed **"no"** is a
+  valid, complete outcome (record it; don't file a ticket). Only a confirmed
+  **"yes"** creates the ticket. The model never decides customer impact on the
+  human's behalf.
+- **Standard shape**: the ticket title is `DOC-ready: <feature>`, it carries
+  the `ready-for-docs` label, and its description follows the documentation
+  team's template verbatim. The author must **not invent** UI text, behavior,
+  limits, permissions, environments, or unsupported scenarios — unknowns go
+  under *Internal notes* as open questions.
+
+**Why**: documentation is a release gate for customer-facing features. Filing a
+structured, linked planning ticket at PR time — instead of after release —
+gives the docs team lead time and a single source of feature facts, and lets
+them track AI-originated dev work that has downstream doc impact.
+
+**Enforced by**:
+- Client: the `file-doc-task` skill in `plugins/base-tools/` (the shared
+  mechanism — every team's pipeline calls it in its finalize phase). The skill
+  includes the `AI_generated` label (rule #2) in the create call up front; the
+  rule-2 hook blocks the `createJiraIssue` call if it's missing.
+- Config: `policy/doc-task.yaml` (JIRA project, issue type, link type — set
+  per org; the skill refuses to file while the project is unset).
+- Server: *(optional, planned)* a lint that — only for PRs labeled
+  `customer-facing` — verifies a linked `ready-for-docs` task exists. Held
+  until the gate is adopted, since a ticket is filed only when docs are needed.
+
 ---
 
 ## Safety guardrails
 
-Beyond the three *standards* rules above (which are about process hygiene), the
+Beyond the four *standards* rules above (which are about process hygiene), the
 plugin ships a set of *safety* guardrails: PreToolUse hooks that block
 destructive actions Claude should never take autonomously. The point is to save
 us from ourselves — when Claude runs unattended, or a tired developer clicks
