@@ -95,8 +95,9 @@ them track AI-originated dev work that has downstream doc impact.
 
 **Enforced by**:
 - Client: the `file-doc-task` skill in `plugins/base-tools/` (the shared
-  mechanism — every team's pipeline calls it in its finalize phase). The
-  existing rule-2 hook auto-adds the `AI_generated` label to the created issue.
+  mechanism — every team's pipeline calls it in its finalize phase). The skill
+  includes the `AI_generated` label (rule #2) in the create call up front; the
+  rule-2 hook blocks the `createJiraIssue` call if it's missing.
 - Config: `policy/doc-task.yaml` (JIRA project, issue type, link type — set
   per org; the skill refuses to file while the project is unset).
 - Server: *(optional, planned)* a lint that — only for PRs labeled

@@ -75,8 +75,10 @@ the documentation itself.
 
 7. **Create the issue** via `createJiraIssue`:
    - **Summary:** `DOC-ready: <customer-facing feature name>`
-   - **Label:** `ready-for-docs` (the base-tools `inject-ai-generated-label`
-     hook adds `AI_generated` automatically — do not remove it).
+   - **Labels:** include **both** `ready-for-docs` **and** `AI_generated` in the
+     initial `labels` array. The rule-2 `inject-ai-generated-label` hook
+     *blocks* the `createJiraIssue` call and forces a retry if `AI_generated`
+     is missing — so add it up front rather than relying on auto-injection.
    - **Project / issue type:** from `policy/doc-task.yaml`.
    - **Description:** the filled template from step 5.
 
