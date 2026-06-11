@@ -108,7 +108,7 @@ them track AI-originated dev work that has downstream doc impact.
 
 ## Safety guardrails
 
-Beyond the three *standards* rules above (which are about process hygiene), the
+Beyond the four *standards* rules above (which are about process hygiene), the
 plugin ships a set of *safety* guardrails: PreToolUse hooks that block
 destructive actions Claude should never take autonomously. The point is to save
 us from ourselves — when Claude runs unattended, or a tired developer clicks
