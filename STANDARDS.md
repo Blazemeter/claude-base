@@ -27,11 +27,13 @@ issue.
 - **Prefer the PR title** when you have a choice — GitHub's automatic
   JIRA-link enrichment keys off the title (e.g. `MOB-49737: revert spring-boot`).
 - **No placeholders.** An all-zero key (`MOB-00000`, `MOB-0`, …) satisfies the
-  pattern but points at no real issue, so it is rejected on branch creation,
-  new-branch push, and PR open. Create the task *first*, then use its real key.
-  Claude-tooling work (claude-base / reporting-claude) belongs under the **AIDLC
-  Epic `MOB-50371`** — file a child Task (link via `customfield_10014=MOB-50371`,
-  e.g. with the `jira` skill) and reference that key in the PR.
+  pattern but points at no real issue, so it is rejected by **both** the client
+  hook (branch creation, new-branch push, `gh pr create`) **and** the server
+  `jira-id-lint` check (branch / title / body) — a real, non-zero key must be
+  present. Create the task *first*, then use its real key. Claude-tooling work
+  (claude-base / reporting-claude) belongs under the **AIDLC Epic `MOB-50371`** —
+  file a child Task (link via `customfield_10014=MOB-50371`, e.g. with the `jira`
+  skill) and reference that key in the PR.
 
 **Why**: lets `gh`, `jira`, and our `multi-repo-ticket-status` skill correlate
 work across repos without manual tagging. Placeholders break that correlation,

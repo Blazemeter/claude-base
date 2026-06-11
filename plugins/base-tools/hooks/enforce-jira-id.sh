@@ -28,8 +28,14 @@ PLACEHOLDER_RE='^[A-Z][A-Z0-9_]+-0+$'
 
 # True (exit 0) when $1 contains at least one *real* (non-all-zero) JIRA key.
 # Extracts every key it can find and checks that at least one is not a placeholder.
+# Note: the first grep is neutralized with `|| true` and the empty case is guarded
+# explicitly, so the function never trips `set -e` regardless of call context — the
+# only non-zero it returns is its own deliberate "no real key" verdict.
 has_real_jira_key() {
-  printf '%s' "$1" | grep -oE "$JIRA_RE" | grep -qvE "$PLACEHOLDER_RE"
+  local keys
+  keys="$(printf '%s' "$1" | grep -oE "$JIRA_RE" || true)"
+  [ -n "$keys" ] || return 1
+  printf '%s\n' "$keys" | grep -qvE "$PLACEHOLDER_RE"
 }
 
 reject() {

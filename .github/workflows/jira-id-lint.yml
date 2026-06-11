@@ -50,25 +50,40 @@ jobs:
           echo "Branch: $BRANCH"
           echo "Title:  $PR_TITLE"
 
-          branch_ok=0
-          title_ok=0
-          body_ok=0
+          # All-zero suffixes (MOB-00000, MOB-0, …) match JIRA_RE but point at no
+          # real issue — reject them here too so the server check agrees with the
+          # client hook (STANDARDS rule 1, "No placeholders").
+          PLACEHOLDER_RE='^[A-Z][A-Z0-9_]+-0+$'
 
-          if echo "$BRANCH"    | grep -Eq "$JIRA_RE"; then branch_ok=1; fi
-          if echo "$PR_TITLE"  | grep -Eq "$JIRA_RE"; then title_ok=1;  fi
-          if echo "$PR_BODY"   | grep -Eq "$JIRA_RE"; then body_ok=1;   fi
+          # Prints 1 if the argument contains a *real* (non-placeholder) JIRA key,
+          # else 0. The first grep is neutralized with `|| true` so an empty match
+          # never trips `set -e`.
+          real_match() {
+            local keys
+            keys="$(printf '%s' "$1" | grep -oE "$JIRA_RE" || true)"
+            if [ -n "$keys" ] && printf '%s\n' "$keys" | grep -qvE "$PLACEHOLDER_RE"; then
+              echo 1
+            else
+              echo 0
+            fi
+          }
+
+          branch_ok=$(real_match "$BRANCH")
+          title_ok=$(real_match "$PR_TITLE")
+          body_ok=$(real_match "$PR_BODY")
 
           if [ "$REQUIRE_IN_TITLE" = "true" ] && [ "$title_ok" -eq 0 ]; then
-            echo "::error::PR title is missing a JIRA key (pattern /$JIRA_RE/)."
-            echo "Rename the PR to include the JIRA key, e.g. 'MOB-12345: fix foo'."
+            echo "::error::PR title is missing a real JIRA key (pattern /$JIRA_RE/, all-zero placeholders rejected)."
+            echo "Rename the PR to include the JIRA key, e.g. 'MOB-12345: fix foo' (not MOB-00000)."
             exit 1
           fi
 
           if [ "$((branch_ok + title_ok + body_ok))" -eq 0 ]; then
-            echo "::error::No JIRA key found in branch '$BRANCH', PR title, or PR body."
-            echo "Add a JIRA key matching /$JIRA_RE/ to at least one of them."
+            echo "::error::No real JIRA key found in branch '$BRANCH', PR title, or PR body."
+            echo "A key matching /$JIRA_RE/ must be present and must not be an all-zero placeholder (MOB-00000)."
+            echo "Create the task first (Claude-tooling work goes under AIDLC epic MOB-50371), then reference its key."
             echo "See STANDARDS.md in PerfectoMobileDev/claude-base for the policy."
             exit 1
           fi
 
-          echo "OK — JIRA key present (branch=$branch_ok title=$title_ok body=$body_ok)."
+          echo "OK — real JIRA key present (branch=$branch_ok title=$title_ok body=$body_ok)."
