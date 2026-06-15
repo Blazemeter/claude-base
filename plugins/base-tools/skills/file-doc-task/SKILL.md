@@ -69,14 +69,23 @@ gate in the next section asks the docs question **only once** — once a ticket
    this skill does not apply.
 
 2. **Check for a prior decision** so the gate is asked only once across the
-   early + finalize passes:
-   - The caller passes a known doc-task key (e.g. `.sdd-meta.json`'s `doc_task`),
-     **or** you find an existing issue titled `DOC-ready: <feature>` linked to
-     the engineering ticket → skip the question and go to **Reconcile an
-     existing ticket** below.
+   early + finalize passes. This skill has **no Jira search/JQL tool** — only
+   `getJiraIssue`, which requires a key — so detection of an existing ticket is
+   limited to these in-tools means, in order:
+   - The caller passes a known doc-task key (e.g. `.sdd-meta.json`'s `doc_task`)
+     → skip the question and go to **Reconcile an existing ticket** below. This
+     is the reliable path; spec-driven pipelines persist the key on the early
+     pass precisely so the finalize pass can find it.
+   - Otherwise, if you know the engineering ticket key, fetch it with
+     `getJiraIssue` and inspect its issue links for one titled
+     `DOC-ready: <feature>`. If found, treat its key as the doc-task key and go
+     to **Reconcile an existing ticket**.
    - The caller passes a recorded "no" (docs previously confirmed not required)
      → stop silently; do not re-ask.
-   - Otherwise (first run, no prior decision) → ask the gate in step 3.
+   - Otherwise (first run, no key, no linked ticket found) → ask the gate in
+     step 3. Because there is no search fallback, callers that may run this
+     skill more than once **must** persist and pass back the doc-task key to
+     avoid duplicate filings.
 
 3. **Ask the developer explicitly** (only when there is no prior decision):
 
@@ -94,9 +103,10 @@ gate in the next section asks the docs question **only once** — once a ticket
 
 ## Reconcile an existing ticket
 
-Run this when step 2 found an existing `DOC-ready:` ticket (passed-in key or
-matched by search). The goal is to keep the one ticket current, never to file a
-second one.
+Run this when step 2 found an existing `DOC-ready:` ticket — either via a
+passed-in key or via a `DOC-ready:` link discovered on the engineering ticket
+(there is no Jira search tool). The goal is to keep the one ticket current,
+never to file a second one.
 
 1. **Fetch it** with `getJiraIssue` (description + labels + links).
 2. **Rebuild the description** from the current workflow context using the same
@@ -173,7 +183,7 @@ Doc task filed: <DOC-KEY> — DOC-ready: <feature> [draft from specs | as-built]
 On reconcile (ticket already existed):
 
 ```
-Doc task updated: <DOC-KEY> — DOC-ready: <feature>   # or "unchanged — already current"
+Doc task [updated | unchanged — already current]: <DOC-KEY> — DOC-ready: <feature>
   Linked to: <MOB-KEY> (<link type>)
   Open questions for docs (<n>): <comma-separated field names, or "none">
 ```
