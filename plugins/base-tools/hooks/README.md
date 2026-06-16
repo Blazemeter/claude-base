@@ -43,7 +43,7 @@ These implement the three baseline rules in `../../../STANDARDS.md`:
 
 - `enforce-jira-id.sh` — `PreToolUse`/`Bash`. Blocks `git checkout -b`, `git switch -c`, `git branch <name>`, and `gh pr create` when no JIRA key (`[A-Z][A-Z0-9_]+-[0-9]+`) is present.
 - `enforce-claude-attribution.sh` — `PreToolUse`/`Bash`. Blocks `git commit -m …` when the message lacks a `Co-Authored-By: Claude` trailer. Lets `--amend --no-edit` and `--fixup` through.
-- `inject-ai-generated-label.sh` — `PreToolUse`/`mcp__claude_ai_Atlassian_Rovo__createJiraIssue`. Blocks the create call when the `AI_generated` label is missing from `tool_input.labels` (or `tool_input.fields.labels`) and tells Claude to retry with the label added.
+- `inject-ai-generated-label.sh` — `PreToolUse`/`mcp__claude_ai_Atlassian_Rovo__createJiraIssue`. Blocks the create call when the `AI_generated` label is missing from `tool_input.additional_fields.labels` (where the MCP tool actually reads labels; legacy `tool_input.labels` / `tool_input.fields.labels` shapes are also tolerated) and tells Claude to retry with the label added under `additional_fields.labels`.
 
 All three honour `CLAUDE_STANDARDS_SKIP=1` as an escape hatch; every skip is logged to `${CLAUDE_PLUGIN_DATA}/base-tools/standards-skip.log`.
 

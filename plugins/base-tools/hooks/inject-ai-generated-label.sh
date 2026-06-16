@@ -21,13 +21,21 @@ if [ "${CLAUDE_STANDARDS_SKIP:-0}" = "1" ]; then
   exit 0
 fi
 
-# Labels live under tool_input.labels (an array). Some Rovo MCP shapes nest
-# fields under tool_input.fields.labels — handle both.
+# The createJiraIssue MCP tool reads labels ONLY from tool_input.additional_fields.labels
+# (there is no top-level `labels` param — the schema is additionalProperties:false, so a
+# top-level `labels` is dropped/rejected and the label never lands on the ticket). Check
+# additional_fields.labels first; also tolerate the legacy tool_input.labels /
+# tool_input.fields.labels shapes so older payloads don't false-block.
 has_label="$(
   printf '%s' "$payload" | python3 -c '
 import sys, json
 ti = json.load(sys.stdin).get("tool_input", {}) or {}
-labels = list(ti.get("labels") or []) + list((ti.get("fields") or {}).get("labels") or [])
+af = ti.get("additional_fields") or {}
+labels = (
+    list(af.get("labels") or [])
+    + list(ti.get("labels") or [])
+    + list((ti.get("fields") or {}).get("labels") or [])
+)
 print("yes" if any(str(l).lower() == "ai_generated" for l in labels) else "")
 '
 )"
@@ -37,9 +45,10 @@ if [ -n "$has_label" ]; then
 fi
 
 echo "claude-base STANDARDS rule 2: this createJiraIssue call is missing the" >&2
-echo "'AI_generated' label. Add it to the labels array and retry, e.g." >&2
+echo "'AI_generated' label. Labels go under additional_fields.labels (the MCP" >&2
+echo "tool has no top-level 'labels' param). Add it there and retry, e.g." >&2
 echo "" >&2
-echo '  { ..., "labels": ["AI_generated", <your other labels>] }' >&2
+echo '  { ..., "additional_fields": { "labels": ["AI_generated", <your other labels>] } }' >&2
 echo "" >&2
 echo "This is how the JIRA Ops team audits Claude-filed tickets. See" >&2
 echo "STANDARDS.md at the root of claude-base. Set CLAUDE_STANDARDS_SKIP=1" >&2
