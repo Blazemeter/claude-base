@@ -86,11 +86,17 @@ JIRA task linked to the engineering ticket.
 - **Scope**: features and user-visible behavior changes only. Pure refactors,
   internal-only fixes, test-only changes, and build/dependency chores are out
   of scope and must not generate a doc task.
-- **Human-gated, not automatic**: the workflow asks the developer whether the
-  change requires customer-facing documentation. A confirmed **"no"** is a
-  valid, complete outcome (record it; don't file a ticket). Only a confirmed
-  **"yes"** creates the ticket. The model never decides customer impact on the
-  human's behalf.
+- **Human-gated, not automatic**: the workflow asks the developer **once**
+  whether the change requires customer-facing documentation. A confirmed
+  **"no"** is a valid, complete outcome (record it; don't file a ticket). Only a
+  confirmed **"yes"** creates the ticket. The model never decides customer
+  impact on the human's behalf.
+- **Create-or-update, not create-or-skip**: filing is idempotent. A spec-driven
+  workflow may draft the ticket **early** (from the reviewed design/tasks, to
+  guide development and anchor it to a stated customer outcome) and then
+  **reconcile** it at finalize so the description reflects what was actually
+  shipped. A workflow that finds an existing ticket updates it in place rather
+  than stopping; it never files a second one.
 - **Standard shape**: the ticket title is `DOC-ready: <feature>`, it carries
   the `ready-for-docs` label, and its description follows the documentation
   team's template verbatim. The author must **not invent** UI text, behavior,
@@ -98,15 +104,17 @@ JIRA task linked to the engineering ticket.
   under *Internal notes* as open questions.
 
 **Why**: documentation is a release gate for customer-facing features. Filing a
-structured, linked planning ticket at PR time — instead of after release —
-gives the docs team lead time and a single source of feature facts, and lets
-them track AI-originated dev work that has downstream doc impact.
+structured, linked planning ticket early — and reconciling it at PR time, rather
+than only after release — gives the docs team lead time and a single source of
+feature facts, anchors development to a stated customer outcome, and lets them
+track AI-originated dev work that has downstream doc impact.
 
 **Enforced by**:
-- Client: the `file-doc-task` skill in `plugins/base-tools/` (the shared
-  mechanism — every team's pipeline calls it in its finalize phase). The skill
-  includes the `AI_generated` label (rule #2) in the create call up front; the
-  rule-2 hook blocks the `createJiraIssue` call if it's missing.
+- Client: the `file-doc-task` skill in `plugins/base-tools/` (the shared,
+  idempotent mechanism — pipelines call it early to draft and at finalize to
+  reconcile, or just once at finalize). The skill includes the `AI_generated`
+  label (rule #2) in the create call up front; the rule-2 hook blocks the
+  `createJiraIssue` call if it's missing.
 - Config: `policy/doc-task.yaml` (JIRA project, issue type, link type — set
   per org; the skill refuses to file while the project is unset).
 - Server: *(optional, planned)* a lint that — only for PRs labeled
