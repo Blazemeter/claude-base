@@ -164,8 +164,9 @@ to exactly the work this marketplace exists to track.
 
 **Enforced by**:
 - Client: the `jira-lifecycle` skill in `plugins/base-tools/` (the shared,
-  idempotent mechanism — workflows call it at each lifecycle point: start, PR
-  open, deploy/test, close). The skill includes the standard comment shapes and
+  idempotent mechanism — workflows call it at each lifecycle point: start,
+  update, PR open, deploy/test, close). The skill includes the standard comment
+  shapes and
   honors the forward-only rule.
 - Config: `policy/jira-lifecycle.yaml` (status names + numeric transition IDs per
   org; a stage left unset is skipped, status untouched).

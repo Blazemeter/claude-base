@@ -60,10 +60,18 @@ key and the point (`start` | `update` | `pr` | `deploy` | `close`).
 3. **Fetch current state** with `getJiraIssue` (status + key). Use it for the
    forward-only check and to avoid redundant transitions.
 
-4. **Decide the transition (forward-only).** If `forward_only` is true and the
-   issue's current status is **at or past** the target stage in `order`, do
-   **not** transition — skip straight to the comment. Never move an issue
-   backwards. Re-running a point whose status is already set is a no-op on status.
+4. **Decide the transition (forward-only).** If `forward_only` is true:
+   - First, map the issue's **current status name** to its stage in `order` by
+     matching it against each `stages.*.status` value. If the current status
+     does **not** match any configured stage (e.g. a custom workflow status like
+     "Blocked" or "Reopened"), treat it as **unmapped**: skip the transition
+     entirely, add the comment anyway, and report the status as
+     "unknown/unmapped — transition skipped". This is the safe fallback; never
+     guess a position or move the issue based on an unmapped status.
+   - If the current status maps to a stage that is **at or past** the target
+     stage in `order`, do **not** transition — skip straight to the comment.
+   - Never move an issue backwards. Re-running a point whose status is already
+     set is a no-op on status.
 
 5. **Transition if needed.** If a status change is warranted:
    - If the stage's `transition_id` is the unset placeholder (`__UNSET__`) —
