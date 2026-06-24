@@ -1,6 +1,6 @@
 # Claude marketplace standards
 
-Single source of truth for the four baseline rules every Claude-driven action
+Single source of truth for the five baseline rules every Claude-driven action
 in our orgs must follow. Enforced by hooks in `plugins/base-tools/` (client
 side) and by reusable GitHub Actions in `.github/workflows/` (server side).
 
@@ -120,6 +120,58 @@ track AI-originated dev work that has downstream doc impact.
 - Server: *(optional, planned)* a lint that — only for PRs labeled
   `customer-facing` — verifies a linked `ready-for-docs` task exists. Held
   until the gate is adopted, since a ticket is filed only when docs are needed.
+
+## 5. JIRA lifecycle status transitions for AI-driven work
+
+Every Claude-driven workflow that acts on a **related JIRA issue** must keep that
+issue's **status** and **comment trail** in step with the work, so the lifecycle
+of AI-assisted work is visible in JIRA itself. This is what lets us measure AI
+throughput and stage-by-stage cycle time from JIRA — without it, AI work is
+invisible to the metrics that justify it.
+
+Walk the issue through these stages as the work reaches each one:
+
+| When the work… | Move status to | Comment to add |
+|---|---|---|
+| **starts** (Claude begins work on the related issue) | **In Progress** | a "work started" note (what is being attempted, by which workflow) |
+| **produces a meaningful update** (decision, blocker, scope change, finding) | *(no change)* | a progress comment capturing the update |
+| **opens a PR** | **In Review** | the **PR link** plus a short summary (what changed, repo/branch, how to verify) |
+| **is deployed and testing begins** | **In Testing** | a note that it's deployed and where (env) |
+| **is verified complete** | **Closed** | a closing note (outcome, links to the merged PR / release) |
+
+Rules that make this safe and idempotent:
+
+- **A related issue must already exist** — this rule transitions an existing
+  issue; it never creates one. If there is no related JIRA key, there is nothing
+  to do (file the ticket first, per rule #1).
+- **Forward-only.** Never move an issue *backwards* (e.g. from `Closed` to
+  `In Progress`). If the issue is already at or past the target stage, leave the
+  status and just add the comment if one is warranted. Re-running a stage is a
+  no-op on status.
+- **Comment, don't spam.** Add a comment when there is real signal (the stage
+  changed, or a genuine update); don't post empty "still working" noise.
+- **Org-configurable.** Status names and numeric transition IDs differ per JIRA
+  workflow. The mapping lives in `policy/jira-lifecycle.yaml`, not in skill prose.
+  A stage whose transition is unset in that file (e.g. some workflows have no
+  dedicated **In Testing** status) is **skipped** — the comment is still added so
+  the trail is complete, but the status is left unchanged.
+
+**Why**: the whole point of running development through Claude is to be able to
+measure it. Status + comments on the related issue are the *only* durable,
+queryable record of when AI work started, when it hit review, when it shipped,
+and how long each stage took. Skipping the transitions leaves the metrics blind
+to exactly the work this marketplace exists to track.
+
+**Enforced by**:
+- Client: the `jira-lifecycle` skill in `plugins/base-tools/` (the shared,
+  idempotent mechanism — workflows call it at each lifecycle point: start, PR
+  open, deploy/test, close). The skill includes the standard comment shapes and
+  honors the forward-only rule.
+- Config: `policy/jira-lifecycle.yaml` (status names + numeric transition IDs per
+  org; a stage left unset is skipped, status untouched).
+- Server: *(optional, planned)* a metrics audit that flags PRs carrying the
+  `ai-generated` label whose referenced JIRA issue never reached `In Review`,
+  catching workflows that opened a PR without transitioning the ticket.
 
 ---
 
