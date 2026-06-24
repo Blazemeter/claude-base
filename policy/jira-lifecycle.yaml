@@ -1,0 +1,60 @@
+# JIRA lifecycle transition configuration (STANDARDS rule #5).
+#
+# Consumed by the base-tools `jira-lifecycle` skill. Each team that forks
+# claude-base inherits this file; override the values for your org's JIRA
+# workflow. Status names and numeric transition IDs differ per workflow.
+#
+# How transition IDs work: the Atlassian MCP exposes transitions by numeric ID,
+# not by name. Discover them for your project with `getTransitionsForJiraIssue`
+# on any issue, then record the ID for each lifecycle stage below.
+#
+# A stage whose `transition_id` is the unset placeholder ("__UNSET__") is
+# SKIPPED — the skill still adds the stage's comment so the trail is complete,
+# but it does NOT change the issue's status. This is deliberate: some workflows
+# have no dedicated "In Testing" status, and we never guess a transition.
+
+# --- Lifecycle stages ----------------------------------------------------
+# `status` is the human-readable name (used only in comments / reporting).
+# `transition_id` is the numeric ID the skill passes to transitionJiraIssue.
+#
+# Defaults below match the Perfecto MOB (R&D) workflow, verified live via
+# getTransitionsForJiraIssue on a Task — these transitions are global (available
+# from any status). NOTE: confirm against your own issue type before trusting
+# them; transition IDs can differ by project / issue type / workflow scheme.
+# Override per org.
+stages:
+  # Work has started on the related issue.
+  in_progress:
+    status: "In Progress"
+    transition_id: "51"
+
+  # A PR has been opened for the work.
+  in_review:
+    status: "In Review"
+    transition_id: "61"
+
+  # Deployed to an environment and testing has begun. The MOB workflow exposes
+  # this as the "Testing" status. Workflows that have no testing status should
+  # set this to "__UNSET__" — the skill then adds the deploy/test comment but
+  # leaves the issue's status unchanged.
+  in_testing:
+    status: "Testing"
+    transition_id: "41"
+
+  # Work is verified complete.
+  closed:
+    status: "Closed"
+    transition_id: "71"
+
+# --- Behavior ------------------------------------------------------------
+# Forward-only: never move an issue backwards through the lifecycle. If the
+# issue is already at or past the target stage, the status is left unchanged.
+forward_only: true
+
+# The lifecycle order used to evaluate `forward_only`. Stages not listed here
+# are treated as terminal-adjacent and always allowed to add their comment.
+order:
+  - in_progress
+  - in_review
+  - in_testing
+  - closed
