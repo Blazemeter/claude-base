@@ -135,9 +135,10 @@ Walk the issue through these stages as the work reaches each one:
 |---|---|---|
 | **starts** (Claude begins work on the related issue) | **In Progress** | a "work started" note (what is being attempted, by which workflow) |
 | **produces a meaningful update** (decision, blocker, scope change, finding) | *(no change)* | a progress comment capturing the update |
-| **opens a PR** | **In Review** | the **PR link** plus a short summary (what changed, repo/branch, how to verify) |
-| **is deployed and testing begins** | **In Testing** | a note that it's deployed and where (env) |
-| **is verified complete** | **Closed** | a closing note (outcome, links to the merged PR / release) |
+| **opens a PR** | *(no change)* | the **PR link** plus a short summary (what changed, repo/branch, how to verify) |
+| **passes CI** | **In Review** | a note that CI is green and the change is moving to review |
+| **is deployed and tested on Staging** | **Testing** | a note that it's deployed to Staging and testing started |
+| **is verified on Production** | **Closed** | a closing note (outcome, links to the merged PR / release) |
 
 Rules that make this safe and idempotent:
 
@@ -165,14 +166,15 @@ to exactly the work this marketplace exists to track.
 **Enforced by**:
 - Client: the `jira-lifecycle` skill in `plugins/base-tools/` (the shared,
   idempotent mechanism — workflows call it at each lifecycle point: start,
-  update, PR open, deploy/test, close). The skill includes the standard comment
+  update, PR open, ci, staging, done). The skill includes the standard comment
   shapes and
   honors the forward-only rule.
 - Config: `policy/jira-lifecycle.yaml` (status names + numeric transition IDs per
   org; a stage left unset is skipped, status untouched).
 - Server: *(optional, planned)* a metrics audit that flags PRs carrying the
-  `ai-generated` label whose referenced JIRA issue never reached `In Review`,
-  catching workflows that opened a PR without transitioning the ticket.
+  `ai-generated` label whose referenced JIRA issue never reached `In Review`.
+  Note that `In Review` is now gated on **CI passing**, not on PR open, so the
+  audit should key off the CI result rather than PR creation.
 
 ---
 

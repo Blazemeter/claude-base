@@ -1,6 +1,6 @@
 ---
 name: jira-lifecycle
-description: Keep a related JIRA issue's status and comment trail in step with AI-driven work so the lifecycle is visible in JIRA metrics. Idempotent, forward-only transitions at each lifecycle point — move to In Progress when work starts, add progress comments for meaningful updates, move to In Review and post the PR link + summary when a PR opens, move to In Testing when deployed, and Closed when verified complete. Use whenever a Claude workflow acts on a related JIRA key (MOB-1234, SECVULN-99, …) at any of those points, or when a developer asks to "move the ticket to in progress / in review", "post the PR link on the ticket", or "close the ticket". Do NOT use when there is no related JIRA issue, and do NOT use to create issues.
+description: Keep a related JIRA issue's status and comment trail in step with AI-driven work so the lifecycle is visible in JIRA metrics. Idempotent, forward-only transitions at each lifecycle point — move to In Progress when work starts, add progress comments for meaningful updates, post the PR link + summary when a PR opens (no status change), move to In Review when CI passes, move to Testing when on Staging, and Closed when verified on Production. Use whenever a Claude workflow acts on a related JIRA key (MOB-1234, SECVULN-99, …) at any of those points, or when a developer asks to "move the ticket to in progress / in review", "post the PR link on the ticket", or "close the ticket". Do NOT use when there is no related JIRA issue, and do NOT use to create issues.
 allowed-tools: Read, Bash(gh *), mcp__claude_ai_Atlassian_Rovo__getJiraIssue, mcp__claude_ai_Atlassian_Rovo__getTransitionsForJiraIssue, mcp__claude_ai_Atlassian_Rovo__transitionJiraIssue, mcp__claude_ai_Atlassian_Rovo__addCommentToJiraIssue
 ---
 
@@ -20,20 +20,22 @@ an issue (file the ticket first — rule #1).
 |---|---|---|
 | `start` — Claude begins work on the related issue | **In Progress** | what's being attempted, by which workflow |
 | `update` — a meaningful decision / blocker / finding | *(no change)* | the progress update |
-| `pr` — a PR was opened | **In Review** | PR link + summary (what changed, repo/branch, how to verify) |
-| `deploy` — deployed and testing begins | **In Testing** | deployed, and to which environment |
-| `close` — verified complete | **Closed** | outcome + links to merged PR / release |
+| `pr` — a PR was opened | *(no change)* | PR link + summary (what changed, repo/branch, how to verify) |
+| `ci` — the change passed CI | **In Review** | CI is green; moving to review |
+| `staging` — deployed and tested on Staging | **Testing** | deployed to Staging; testing started |
+| `done` — verified on Production | **Closed** | outcome + links to merged PR / release |
 
 Callers invoke the skill once per point as the work reaches it, passing the JIRA
-key and the point (`start` | `update` | `pr` | `deploy` | `close`).
+key and the point (`start` | `update` | `pr` | `ci` | `staging` | `done`).
 
 ## When to use
 
 - A workflow has just **started** work tied to a JIRA key → `start`.
 - A workflow hit a **meaningful update** worth recording → `update`.
-- A workflow **opened a PR** for the work → `pr`.
-- A change was **deployed** and testing is beginning → `deploy`.
-- Work is **verified complete** → `close`.
+- A workflow **opened a PR** for the work → `pr` (posts the link only, no status change).
+- The change **passed CI** → `ci`.
+- The change was **deployed and tested on Staging** → `staging`.
+- Work is **verified on Production** → `done`.
 - A developer explicitly asks to move/transition the ticket, post the PR link,
   or close it.
 
@@ -52,10 +54,11 @@ key and the point (`start` | `update` | `pr` | `deploy` | `close`).
    (each stage's `status` name and numeric `transition_id`), `forward_only`, and
    the lifecycle `order`. Map the requested point to its stage:
    - `start` → `in_progress`
-   - `pr` → `in_review`
-   - `deploy` → `in_testing`
-   - `close` → `closed`
+   - `ci` → `in_review`
+   - `staging` → `in_testing`
+   - `done` → `closed`
    - `update` → no stage (comment only)
+   - `pr` → no stage (comment only — posts the PR link without transitioning)
 
 3. **Fetch current state** with `getJiraIssue` (status + key). Use it for the
    forward-only check and to avoid redundant transitions.
@@ -104,20 +107,24 @@ can't source.
   ```
   🤖 Update: <the decision / blocker / finding>.
   ```
-- **pr** (the load-bearing one for metrics — always include the link)
+- **pr** (the load-bearing one for metrics — always include the link; no status change)
   ```
   🤖 PR opened: <PR url>
   <PR title> — <repo>@<headRef> → <baseRef>
   Summary: <what changed, 1–2 lines>.
   Verify: <how to verify, if known>.
   ```
-- **deploy**
+- **ci**
   ```
-  🤖 Deployed to <env>; testing started.
+  🤖 CI passed; moving to In Review.
   ```
-- **close**
+- **staging**
   ```
-  🤖 Verified complete. Merged: <PR url> · Release: <link if any>.
+  🤖 Deployed to Staging; testing started.
+  ```
+- **done**
+  ```
+  🤖 Verified on Production. Merged: <PR url> · Release: <link if any>.
   Outcome: <one line>.
   ```
 
