@@ -41,7 +41,7 @@ In `hooks.json`, the `matcher` field is a regex matched against the tool/command
 
 These implement the three baseline rules in `../../../STANDARDS.md`:
 
-- `enforce-jira-id.sh` — `PreToolUse`/`Bash`. Blocks `git checkout -b`, `git switch -c`, `git branch <name>`, and `gh pr create` when no JIRA key (`[A-Z][A-Z0-9_]+-[0-9]+`) is present.
+- `enforce-jira-id.sh` — `PreToolUse`/`Bash`. Blocks `git checkout -b`, `git switch -c`, `git branch <name>`, and `gh pr create` when no JIRA key (`[A-Z][A-Z0-9_]+-[0-9]+`) is present. **Fork-specific guard:** also blocks `gh pr create` unless it targets this fork explicitly with `--repo Blazemeter/coreteam-claude-utils --base <branch>` — without it, gh resolves the PR base to the upstream parent (`Blazemeter/claude-base`, which has no `develop` branch) and the call fails.
 - `enforce-claude-attribution.sh` — `PreToolUse`/`Bash`. Blocks `git commit -m …` when the message lacks a `Co-Authored-By: Claude` trailer. Lets `--amend --no-edit` and `--fixup` through.
 - `inject-ai-generated-label.sh` — `PreToolUse`/`mcp__claude_ai_Atlassian_Rovo__createJiraIssue`. Blocks the create call when the `AI_generated` label is missing from `tool_input.additional_fields.labels` (where the MCP tool actually reads labels; legacy `tool_input.labels` / `tool_input.fields.labels` shapes are also tolerated) and tells Claude to retry with the label added under `additional_fields.labels`.
 

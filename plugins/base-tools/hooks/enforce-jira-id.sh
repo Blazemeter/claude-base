@@ -20,6 +20,10 @@ if [ "${CLAUDE_STANDARDS_SKIP:-0}" = "1" ]; then
   exit 0
 fi
 
+# Fork PR target — this repo is a FORK of Blazemeter/claude-base, so PRs must
+# explicitly target the fork (see the gh pr create guard at the bottom).
+FORK_REPO="Blazemeter/coreteam-claude-utils"
+
 # JIRA key pattern — matches any uppercase project key with a numeric suffix.
 JIRA_RE='[A-Z][A-Z0-9_]+-[0-9]+'
 # Placeholder pattern — an all-zero numeric suffix (MOB-00000, MOB-0, …).
@@ -47,6 +51,21 @@ reject() {
   echo "" >&2
   echo "See STANDARDS.md at the root of claude-base, or set" >&2
   echo "CLAUDE_STANDARDS_SKIP=1 if this is a no-ticket chore (logged & audited)." >&2
+  exit 2
+}
+
+reject_pr_target() {
+  echo "coreteam-claude-utils PR guard: $1" >&2
+  echo "" >&2
+  echo "This repo is a FORK of Blazemeter/claude-base. Without an explicit base," >&2
+  echo "gh resolves the PR base to the upstream parent (which has no 'develop')," >&2
+  echo "and the call fails. Open PRs against this fork explicitly:" >&2
+  echo "" >&2
+  echo "  gh pr create --repo $FORK_REPO --base develop \\" >&2
+  echo "    --title 'MOB-12345: …' --body '…'" >&2
+  echo "" >&2
+  echo "One-time per clone, you can also: gh repo set-default $FORK_REPO" >&2
+  echo "Set CLAUDE_STANDARDS_SKIP=1 only for a deliberate cross-repo PR (logged & audited)." >&2
   exit 2
 }
 
@@ -110,6 +129,15 @@ if [[ "$cmd" =~ gh[[:space:]]+pr[[:space:]]+create ]]; then
     reject "gh pr create call does not contain a JIRA key in title or body."
   elif ! has_real_jira_key "$cmd"; then
     reject_placeholder "gh pr create call references only a placeholder JIRA key."
+  fi
+
+  # Fork PR-target guard. Without an explicit --repo, gh resolves the base repo
+  # to the upstream parent (claude-base), which has no 'develop' branch, so the
+  # PR fails. Require the fork repo and an explicit base branch.
+  if ! [[ "$cmd" =~ --repo[[:space:]=]+$FORK_REPO ]]; then
+    reject_pr_target "gh pr create is missing '--repo $FORK_REPO'."
+  elif ! [[ "$cmd" =~ --base[[:space:]=] ]]; then
+    reject_pr_target "gh pr create is missing an explicit '--base' branch."
   fi
 fi
 

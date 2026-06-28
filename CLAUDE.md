@@ -21,6 +21,14 @@ This is a fork of `Blazemeter/claude-base`. The team customizes it here while pu
   ```
   If `main` has diverged, `gh repo sync` refuses rather than clobbering — reconcile locally with `merge`/`rebase` (only `--force` if `main` is meant to be a pure mirror).
 
+- **Opening PRs (fork gotcha):** because this is a fork, `gh pr create` resolves the PR *base repo* to the upstream parent (`Blazemeter/claude-base`, which has no `develop` branch) unless told otherwise, and fails. Two defenses are in place — do both once per clone:
+  ```bash
+  gh repo set-default Blazemeter/coreteam-claude-utils      # one-time per clone; fixes gh's base resolution
+  # always create PRs against this fork + develop explicitly:
+  gh pr create --repo Blazemeter/coreteam-claude-utils --base develop --title 'MOB-1234: …' --body '…'
+  ```
+  The `enforce-jira-id.sh` hook now **blocks** any `gh pr create` that omits `--repo Blazemeter/coreteam-claude-utils` or `--base`, so the failure can't recur silently.
+
 > **Upstream-only contract that does NOT govern this fork:** `Blazemeter/claude-base` is itself mirrored byte-for-byte with `PerfectoMobileDev/claude-base` via `.github/workflows/sync-to-sibling.yml` and `verify-sibling-sync.yml` (see `LINKED_REPOS.md`). Those workflow files were inherited by this fork but the sibling-sync contract is **not** this fork's workflow — review whether they should run here at all before relying on them, and ignore `LINKED_REPOS.md`'s "byte-for-byte identical" rule for this repo.
 
 ## Common commands
@@ -54,7 +62,7 @@ CI runs five jobs on every PR (`structural`, `sast`, `secret-scan`, `claude-cli`
 
 `plugins/base-tools/hooks.json` wires PreToolUse/PostToolUse/PreSkill hooks that actively **block** tool calls. Know these before running git or creating JIRA issues:
 
-- **enforce-jira-id.sh** — `git checkout -b`, `git switch -c`, `git branch`, `git push -u`, and `gh pr create` require a real JIRA key matching `[A-Z][A-Z0-9_]+-[0-9]+`. All-zero placeholders like `MOB-00000` are rejected. Work on this tooling itself lives under Epic `MOB-50371`.
+- **enforce-jira-id.sh** — `git checkout -b`, `git switch -c`, `git branch`, `git push -u`, and `gh pr create` require a real JIRA key matching `[A-Z][A-Z0-9_]+-[0-9]+`. All-zero placeholders like `MOB-00000` are rejected. It also blocks `gh pr create` unless it explicitly targets this fork (`--repo Blazemeter/coreteam-claude-utils --base <branch>`) — see the fork PR gotcha above. Work on this tooling itself lives under Epic `MOB-50371`.
 - **enforce-claude-attribution.sh** — every `git commit` message must contain a `Co-Authored-By: Claude` trailer.
 - **inject-ai-generated-label.sh** — JIRA issues created via the Atlassian MCP must include the `AI_generated` label.
 - **Safety guardrails** (block destructive actions): pushes/force-push/reset on shared branches, EC2/GCP compute mutations, datastore mutations (DynamoDB/S3/Redis/Mongo writes), credentials in commits, test-skip edits (`@Disabled`, `pytest.mark.skip`, `-DskipTests`), and hook-bypass attempts (`--no-verify`, `core.hooksPath`, `HUSKY=0`).
