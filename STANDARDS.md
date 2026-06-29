@@ -4,6 +4,11 @@ Single source of truth for the five baseline rules every Claude-driven action
 in our orgs must follow. Enforced by hooks in `plugins/base-tools/` (client
 side) and by reusable GitHub Actions in `.github/workflows/` (server side).
 
+A 1-page summary of these rules is also injected at session start by
+`plugins/base-tools/hooks/inject-standards-index.sh` (the `SessionStart` hook),
+so the model has them in context from turn one; this file remains the full
+source of truth, read on demand.
+
 Skill authors: link to this file from your `SKILL.md` so the model has the
 rules in context when it works.
 
@@ -168,6 +173,11 @@ to exactly the work this marketplace exists to track.
   update, PR open, deploy/test, close). The skill includes the standard comment
   shapes and
   honors the forward-only rule.
+- Client (reminder): `plugins/base-tools/hooks/remind-jira-lifecycle.sh` (Stop
+  hook). When the current branch references a real JIRA key, it nudges — once
+  per session+branch — to keep that issue's lifecycle current via the skill,
+  catching the common case of opening a PR without moving the ticket to
+  *In Review*. Advisory only; it never blocks.
 - Config: `policy/jira-lifecycle.yaml` (status names + numeric transition IDs per
   org; a stage left unset is skipped, status untouched).
 - Server: *(optional, planned)* a metrics audit that flags PRs carrying the

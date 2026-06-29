@@ -2,6 +2,7 @@
 name: summarize-pr
 description: Summarize a GitHub pull request — purpose, key changes, review state, CI status, and outstanding blockers. Use when the user pastes a PR URL (github.com/<org>/<repo>/pull/<n>), references a PR by number (e.g. "PR #123", "summarize PR 42"), or asks "what's in PR X" / "is PR X ready to merge". Do NOT use for reviewing a local git diff (use a code-review skill instead), for investigating CI failures in detail (use a CI-investigation skill), or for any non-GitHub VCS (GitLab, Bitbucket).
 allowed-tools: Bash(gh *), Read
+effort: low
 ---
 
 # summarize-pr

@@ -15,6 +15,8 @@ This directory holds executable scripts referenced from `../hooks.json`. Keep on
 
 | Event | When it fires | Common use |
 |---|---|---|
+| `SessionStart` | When a session begins. Stdout is appended to context. | Inject an always-on primer (standards, repo memory) |
+| `Stop` | When Claude finishes a turn. Stdout is appended to context. | Close-out reminders (lifecycle, cleanup) |
 | `PreToolUse` | Before any tool call. Non-zero exit blocks the call. | Guardrails (block writes to forbidden paths, deny dangerous bash) |
 | `PostToolUse` | After a tool call completes. | Audit logging, secret scans on diffs, lint on writes |
 | `PreCommand` | Before a slash command runs. | Permission checks |
@@ -39,8 +41,10 @@ In `hooks.json`, the `matcher` field is a regex matched against the tool/command
 
 ## STANDARDS enforcement hooks
 
-These implement the three baseline rules in `../../../STANDARDS.md`:
+These implement the baseline rules in `../../../STANDARDS.md`:
 
+- `inject-standards-index.sh` — `SessionStart`. Injects a 1-page primer of the five baseline rules + safety guardrails so they are in context from turn one, without re-reading the full `STANDARDS.md` each session. Pure priming — always exits 0, never blocks.
+- `remind-jira-lifecycle.sh` — `Stop`. When the current branch references a real (non-zero) JIRA key, reminds Claude to keep that issue's lifecycle current via the `jira-lifecycle` skill (rule #5) — the most-missed step being *In Review* + PR link on PR open. Deduped to at most once per session+branch (marker under `${CLAUDE_PLUGIN_DATA}`); advisory, always exits 0.
 - `enforce-jira-id.sh` — `PreToolUse`/`Bash`. Blocks `git checkout -b`, `git switch -c`, `git branch <name>`, and `gh pr create` when no JIRA key (`[A-Z][A-Z0-9_]+-[0-9]+`) is present.
 - `enforce-claude-attribution.sh` — `PreToolUse`/`Bash`. Blocks `git commit -m …` when the message lacks a `Co-Authored-By: Claude` trailer. Lets `--amend --no-edit` and `--fixup` through.
 - `inject-ai-generated-label.sh` — `PreToolUse`/`mcp__claude_ai_Atlassian_Rovo__createJiraIssue`. Blocks the create call when the `AI_generated` label is missing from `tool_input.additional_fields.labels` (where the MCP tool actually reads labels; legacy `tool_input.labels` / `tool_input.fields.labels` shapes are also tolerated) and tells Claude to retry with the label added under `additional_fields.labels`.

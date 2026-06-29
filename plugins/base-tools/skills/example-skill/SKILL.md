@@ -2,6 +2,7 @@
 name: example-skill
 description: Template skill — copy this directory and edit. Replace this description with WHEN Claude should invoke the skill (e.g. "Use when the user asks to inspect X" or "Triggers on mentions of Y"). The description is the only signal Claude uses to auto-load the skill, so be specific about the trigger surface.
 allowed-tools: Read Grep Glob
+effort: low
 ---
 
 # Example skill — replace this title

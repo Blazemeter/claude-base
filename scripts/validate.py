@@ -16,6 +16,8 @@ Layered checks, fail-fast:
     - Skill dir name == frontmatter name (when set).
     - Agent file stem == frontmatter name.
     - SKILL.md soft cap: 500 lines (progressive disclosure rule of thumb).
+    - SKILL.md must declare `allowed-tools` (least-privilege) and `effort`
+      (context-budget signal: low|medium|high|xhigh|max).
     - No human-centric files inside skill dirs (README.md, INSTALLATION.md, etc.).
     - Hook scripts have a shebang line.
     - Description length >= 50 chars (warn if shorter — triggering depends on it).
@@ -74,12 +76,18 @@ KNOWN_MODELS = {
 }
 
 KNOWN_HOOK_EVENTS = {
+    "SessionStart", "UserPromptSubmit", "Stop",
     "PreToolUse", "PostToolUse",
     "PreCommand", "PostCommand",
     "PreFile", "PostFile",
     "PreSkill", "PostSkill",
     "PostSubagentSpawn",
 }
+
+# Context-budget signal required on every skill (mirrors the reporting-claude
+# convention): callers/orchestrators use it to plan how much context a skill
+# will pull in.
+VALID_EFFORT = {"low", "medium", "high", "xhigh", "max"}
 
 # High-signal secret patterns. Keep this short — gitleaks (CI) does the heavy lifting.
 SECRET_PATTERNS = [
@@ -242,6 +250,17 @@ def validate_skill(root: Path, skill_dir: Path) -> list[Issue]:
         issues.append((ERROR, str(skill_md), 0, f"name not kebab-case: {name!r}"))
     if name and str(name) != skill_dir.name:
         issues.append((ERROR, str(skill_md), 0, f"name {name!r} must match directory {skill_dir.name!r}"))
+
+    # allowed-tools is mandatory: every skill declares its least-privilege tool
+    # surface (also what the tool-policy check validates against the allowlist).
+    if "allowed-tools" not in fm:
+        issues.append((ERROR, str(skill_md), 0, "frontmatter missing required field: allowed-tools (use [] if the skill calls no tools)"))
+
+    # effort is mandatory: the context-budget signal callers plan against.
+    if "effort" not in fm:
+        issues.append((ERROR, str(skill_md), 0, f"frontmatter missing required field: effort (one of {sorted(VALID_EFFORT)})"))
+    elif str(fm["effort"]) not in VALID_EFFORT:
+        issues.append((ERROR, str(skill_md), 0, f"effort {fm['effort']!r} invalid; must be one of {sorted(VALID_EFFORT)}"))
 
     line_count = skill_md.read_text(encoding="utf-8").count("\n")
     if line_count > MAX_SKILL_LINES:

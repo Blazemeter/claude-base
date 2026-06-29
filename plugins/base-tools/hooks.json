@@ -1,6 +1,28 @@
 {
   "_comment": "Plugin-level hooks. Scripts live under hooks/. Remove '_comment' fields when adapting in production — JSON doesn't support comments.",
   "hooks": {
+    "SessionStart": [
+      {
+        "_comment": "Inject a 1-page STANDARDS primer so the five baseline rules are in context from turn one.",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/inject-standards-index.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "_comment": "STANDARDS rule 5 — close-out reminder to keep the related JIRA issue's lifecycle current.",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/remind-jira-lifecycle.sh"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
