@@ -39,6 +39,7 @@ Exit codes:
 | Claude Code's own schema validation | `claude plugin validate .` | CI (if Claude CLI available) |
 | **Behavioral tests** of skills (assertions against Anthropic API responses) | `scripts/behavioral_runner.py` | CI opt-in (`ANTHROPIC_API_KEY` secret) |
 | **Telemetry aggregation** of skill activations | `scripts/aggregate_telemetry.py` | local, on demand |
+| **JIRA compliance audit** (rules #2 & #5) — AI label + lifecycle reached In Review | `scripts/jira_compliance_audit.py` + `policy/compliance-audit.yaml` | CI (`jira-compliance-audit.yml`), install-independent |
 
 The five jobs in `.github/workflows/plugin-validate.yml` (`structural`, `sast`, `secret-scan`, `claude-cli`, `behavioral`) are independent — any one of them failing blocks the merge. `behavioral` always lints test cases but only invokes the Anthropic API if the `ANTHROPIC_API_KEY` secret is configured.
 
@@ -106,6 +107,31 @@ cases:
 ```
 
 Caveat: this tests *instruction-following* (skill body as system prompt), not Claude Code's plugin auto-invocation. It catches most regressions for ~0% of the engineering cost; for full end-to-end coverage you'd need to spawn Claude Code itself.
+
+## JIRA compliance audit (server-side, install-independent)
+
+`scripts/jira_compliance_audit.py` is the bypass-proof backstop for STANDARDS
+rules #2 and #5: it runs in CI, so it catches violations regardless of whether
+the client-side base-tools hooks were installed when the work was done.
+
+```bash
+# Rule #5 (+ rule #2 on the linked issue) for an AI-labeled PR:
+JIRA_BASE_URL=https://your.atlassian.net JIRA_EMAIL=svc@you.com JIRA_API_TOKEN=… \
+  python scripts/jira_compliance_audit.py lifecycle \
+    --branch "$BRANCH" --pr-title "$TITLE" --pr-body "$BODY"
+
+# Rule #2 nightly sweep (skipped until label_audit_jql is set in policy):
+… python scripts/jira_compliance_audit.py label
+```
+
+Connection comes only from the `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN`
+env (CI secrets), never from a file. Behaviour is configured in
+`policy/compliance-audit.yaml` (label name, the `label_audit_jql`, and which
+statuses count as "reached In Review"). Wired into CI by
+`.github/workflows/jira-compliance-audit.yml`, which is **safe by default** —
+both jobs skip with a notice when the secrets are absent, so nothing blocks a PR
+until the org wires the secrets and promotes the check to required. Exit codes
+match `validate.py`: `0` clean/skipped, `1` violations, `2` could-not-run.
 
 ## Extending the validator
 

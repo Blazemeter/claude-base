@@ -60,9 +60,12 @@ volume and quality of AI-filed tickets, and quickly reverse a bad batch.
 **Enforced by**:
 - Client: `plugins/base-tools/hooks/inject-ai-generated-label.sh`
   (PreToolUse on `mcp__claude_ai_Atlassian_Rovo__createJiraIssue`)
-- Server: nightly audit script (see `scripts/jira_label_audit.py` — planned)
-  that adds the label retroactively to any issue created by a `claude-*`
-  service account that's missing it.
+- Server: `scripts/jira_compliance_audit.py label`, run nightly by
+  `.github/workflows/jira-compliance-audit.yml`, sweeps for Claude-created
+  issues missing the label and reports them. The sweep is **skipped** until
+  `label_audit_jql` is set in `policy/compliance-audit.yaml` (it depends on your
+  org's Claude service-account name), and the whole workflow is **safe by
+  default** — it no-ops with a notice unless the `JIRA_*` CI secrets are set.
 
 ## 3. Claude attribution on every commit it authors
 
@@ -180,9 +183,13 @@ to exactly the work this marketplace exists to track.
   *In Review*. Advisory only; it never blocks.
 - Config: `policy/jira-lifecycle.yaml` (status names + numeric transition IDs per
   org; a stage left unset is skipped, status untouched).
-- Server: *(optional, planned)* a metrics audit that flags PRs carrying the
-  `ai-generated` label whose referenced JIRA issue never reached `In Review`,
-  catching workflows that opened a PR without transitioning the ticket.
+- Server: `scripts/jira_compliance_audit.py lifecycle`, run by
+  `.github/workflows/jira-compliance-audit.yml` on every PR labeled
+  `ai-generated`, verifies the referenced JIRA issue carries `AI_generated`
+  (rule #2) **and** has reached `In Review` or beyond (rule #5) — catching
+  workflows that opened a PR without transitioning the ticket. Safe by default
+  (skips unless the `JIRA_*` CI secrets are set); promote it to a required
+  status check in branch protection once the secrets are wired.
 
 ---
 
@@ -238,6 +245,42 @@ GitHub Action still runs at PR time, so abuse is visible. Use only for:
 
 - One-off chores that don't have a JIRA ticket (housekeeping, doc fixes).
 - Recovering from a bad regex match — and then fix the regex.
+
+## Co-installation: consuming marketplaces must depend on base-tools
+
+The client-side hooks above only fire if `base-tools` is **installed and
+enabled**. A marketplace that relies on these guardrails but doesn't ship its
+own (e.g. `reporting-claude`) is silently unprotected if a developer installs it
+without claude-base — no error, just no enforcement. This is the highest-severity
+failure mode, because it's invisible.
+
+Two layers close it:
+
+1. **Hard dependency (client-side, system-enforced).** Claude Code (v2.1.110+)
+   supports plugin `dependencies`, including cross-marketplace ones. A consuming
+   plugin declares the dependency in its `plugin.json`:
+
+   ```jsonc
+   // <consumer>/.claude-plugin/plugin.json
+   "dependencies": [{ "name": "base-tools", "marketplace": "claude-base" }]
+   ```
+
+   and the consuming marketplace opts in to the cross-marketplace edge:
+
+   ```jsonc
+   // <consumer>/.claude-plugin/marketplace.json
+   "allowCrossMarketplaceDependenciesOn": ["claude-base"]
+   ```
+
+   Installing the consumer then auto-installs and enables `base-tools`, and
+   (v2.1.143+) disabling `base-tools` fails while the consumer is enabled. This
+   makes "guardrails present" a property the package manager enforces, not a
+   convention. Older clients won't enforce it — which is why layer 2 exists.
+
+2. **Server-side audit (install-independent).** The `jira-compliance-audit`
+   workflow (rules #2 & #5, above) runs in CI and therefore fires regardless of
+   what any developer installed locally. This is the only truly bypass-proof
+   layer; keep the relevant checks required in branch protection.
 
 ## Owning these standards
 
