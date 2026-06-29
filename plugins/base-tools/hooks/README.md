@@ -16,6 +16,7 @@ This directory holds executable scripts referenced from `../hooks.json`. Keep on
 | Event | When it fires | Common use |
 |---|---|---|
 | `SessionStart` | When a session begins. Stdout is appended to context. | Inject an always-on primer (standards, repo memory) |
+| `UserPromptSubmit` | When the user submits a prompt, before Claude acts. Stdout is appended to context. | Nudge on missing context (no active ticket/spec) |
 | `Stop` | When Claude finishes a turn. Stdout is appended to context. | Close-out reminders (lifecycle, cleanup) |
 | `PreToolUse` | Before any tool call. Non-zero exit blocks the call. | Guardrails (block writes to forbidden paths, deny dangerous bash) |
 | `PostToolUse` | After a tool call completes. | Audit logging, secret scans on diffs, lint on writes |

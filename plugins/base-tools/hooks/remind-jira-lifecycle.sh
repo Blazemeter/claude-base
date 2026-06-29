@@ -30,13 +30,17 @@ key="$(printf '%s' "$branch" \
   | head -n1 || true)"
 [ -z "$key" ] && exit 0
 
-# Dedupe: at most one reminder per session + branch.
+# Dedupe: at most one reminder per session + branch. Best-effort — if the data
+# dir or marker can't be written (read-only TMPDIR, permissions), skip dedupe
+# and still print. The hook must never block, so directory/marker failures are
+# swallowed rather than allowed to trip `set -e`.
 data_dir="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}}/base-tools"
-mkdir -p "$data_dir"
 slug="$(printf '%s' "${CLAUDE_SESSION_ID:-nosession}-${branch}" | tr -c 'A-Za-z0-9._-' '_')"
 marker="$data_dir/jira-lifecycle-reminded.$slug"
-[ -f "$marker" ] && exit 0
-: > "$marker"
+if mkdir -p "$data_dir" 2>/dev/null; then
+  [ -f "$marker" ] && exit 0
+  : > "$marker" 2>/dev/null || true
+fi
 
 cat <<EOF
 ## claude-base — JIRA lifecycle reminder (STANDARDS rule #5)
