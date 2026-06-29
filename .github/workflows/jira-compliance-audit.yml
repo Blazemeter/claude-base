@@ -1,0 +1,120 @@
+name: STANDARDS — JIRA compliance audit
+
+# Server-side, install-INDEPENDENT backstop for STANDARDS rules #2 and #5.
+#
+# The client-side base-tools hooks only fire if base-tools is installed and
+# enabled. This audit runs in CI, so it catches violations regardless of what
+# any developer had installed — closing the "hooks silent when claude-base
+# isn't co-installed" gap.
+#
+# Two jobs:
+#   lifecycle-audit  (rule #5 + rule #2 on the linked issue) — on every PR
+#                    labeled `ai-generated`: the referenced JIRA issue must
+#                    carry AI_generated AND have reached In Review or beyond.
+#   label-audit      (rule #2) — nightly sweep for Claude-created issues missing
+#                    the AI_generated label (skipped until label_audit_jql is set
+#                    in policy/compliance-audit.yaml).
+#
+# SAFE BY DEFAULT: when the JIRA_* secrets are absent both jobs skip with a
+# notice and succeed, so this never blocks a PR until the org wires the secrets
+# and adds the job as a required status check in branch protection.
+#
+# Required secrets (configure in repo/org settings to activate):
+#   JIRA_BASE_URL   e.g. https://perforce.atlassian.net
+#   JIRA_EMAIL      audit service account email
+#   JIRA_API_TOKEN  Atlassian API token for that account
+
+on:
+  pull_request:
+    types: [opened, edited, labeled, unlabeled, synchronize, reopened]
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * *'   # nightly label sweep (UTC)
+  workflow_call:
+    secrets:
+      JIRA_BASE_URL:
+        required: false
+      JIRA_EMAIL:
+        required: false
+      JIRA_API_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lifecycle-audit:
+    name: Rule #5 — AI PR's issue reached In Review
+    # Only on a real pull_request event (so github.event.pull_request exists)
+    # and only for PRs carrying the AI-work label. The label is fixed here
+    # rather than read from policy because a job `if:` is evaluated before
+    # checkout and cannot read repo files.
+    if: >-
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'ai-generated')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install deps
+        run: pip install -r scripts/requirements.txt
+      - name: Guard on JIRA secrets
+        id: guard
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          if [ -z "${JIRA_BASE_URL:-}" ] || [ -z "${JIRA_EMAIL:-}" ] || [ -z "${JIRA_API_TOKEN:-}" ]; then
+            echo "::notice::JIRA secrets not fully configured (need JIRA_BASE_URL + JIRA_EMAIL + JIRA_API_TOKEN) — skipping compliance audit (safe default)."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Audit referenced issue lifecycle
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          BRANCH: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python scripts/jira_compliance_audit.py lifecycle \
+            --branch "$BRANCH" --pr-title "$PR_TITLE" --pr-body "$PR_BODY"
+
+  label-audit:
+    name: Rule #2 — AI_generated label sweep (nightly)
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install deps
+        run: pip install -r scripts/requirements.txt
+      - name: Guard on JIRA secrets
+        id: guard
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          if [ -z "${JIRA_BASE_URL:-}" ] || [ -z "${JIRA_EMAIL:-}" ] || [ -z "${JIRA_API_TOKEN:-}" ]; then
+            echo "::notice::JIRA secrets not fully configured (need JIRA_BASE_URL + JIRA_EMAIL + JIRA_API_TOKEN) — skipping label audit (safe default)."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Sweep for missing AI_generated labels
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: python scripts/jira_compliance_audit.py label

@@ -1,0 +1,51 @@
+# Server-side JIRA compliance audit configuration (STANDARDS rules #2 & #5).
+#
+# Consumed by scripts/jira_compliance_audit.py, invoked from
+# .github/workflows/jira-compliance-audit.yml. This is the install-INDEPENDENT
+# backstop: it runs in CI and therefore fires regardless of whether the
+# client-side base-tools hooks were installed/enabled when the work was done.
+#
+# JIRA connection comes from CI secrets (env), never this file:
+#   JIRA_BASE_URL   e.g. https://perforce.atlassian.net
+#   JIRA_EMAIL      the audit service account's email
+#   JIRA_API_TOKEN  an Atlassian API token for that account
+# When any of these is unset the workflow SKIPS the audit with a notice, so the
+# check is safe-by-default and never blocks a PR until the org wires the
+# secrets and promotes it to a required check.
+
+# --- Rule #2: AI_generated label ----------------------------------------
+# The label every Claude-created issue must carry.
+ai_label: "AI_generated"
+
+# JQL that selects issues which SHOULD carry ai_label but might not — i.e.
+# issues created by a Claude tool path. This is org-specific (it depends on the
+# service-account name your Claude integrations create issues as), so it ships
+# UNSET. While it is the "__UNSET__" placeholder the label audit is SKIPPED
+# (reported as skipped, never failed) — exactly like an unset jira-lifecycle
+# transition. Example once you know your account:
+#   label_audit_jql: 'reporter = "claude-svc@perforce.com" AND labels != AI_generated ORDER BY created DESC'
+label_audit_jql: "__UNSET__"
+
+# Cap how many issues the label audit pulls per run (nightly job).
+label_audit_max_results: 100
+
+# --- Rule #5: JIRA lifecycle reached review ------------------------------
+# NOTE: the GitHub PR label that triggers the lifecycle audit ("ai-generated")
+# is fixed in .github/workflows/jira-compliance-audit.yml, not here — a job
+# `if:` is evaluated before checkout and cannot read this file. It is therefore
+# intentionally NOT a setting in this policy.
+#
+# A referenced issue satisfies rule #5 once it has reached In Review or beyond.
+# We accept either an explicit status-name match OR a statusCategory of "done"
+# (covers terminal statuses like Closed/Cancelled without enumerating them).
+# Status names mirror policy/jira-lifecycle.yaml; override per org.
+review_or_beyond_statuses:
+  - "In Review"
+  - "Testing"
+  - "Accepted"
+  - "Closed"
+
+# Atlassian statusCategory keys that always count as at/past review.
+# (JIRA categories: "new" = To Do, "indeterminate" = In Progress, "done" = Done.)
+review_or_beyond_status_categories:
+  - "done"
