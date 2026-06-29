@@ -341,6 +341,59 @@ class SchemaTests(unittest.TestCase):
             self.assertTrue(has_error_mentioning(issues, "description"))
 
 
+class SkillRequiredFieldsTests(unittest.TestCase):
+    """allowed-tools and effort are mandatory on every skill."""
+
+    def _write_skill(self, root: Path, name: str, frontmatter: str) -> Path:
+        skill_dir = root / name
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            f"---\nname: {name}\n{frontmatter}\n---\n# body\n", encoding="utf-8")
+        return skill_dir
+
+    def test_complete_skill_has_no_required_field_errors(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            skill_dir = self._write_skill(
+                root, "good",
+                "description: " + ("x" * 60) + "\nallowed-tools: Read\neffort: low")
+            issues = validate.validate_skill(root, skill_dir)
+            self.assertFalse(has_error_mentioning(issues, "allowed-tools"),
+                             f"unexpected allowed-tools error; got {issues!r}")
+            self.assertFalse(has_error_mentioning(issues, "effort"),
+                             f"unexpected effort error; got {issues!r}")
+
+    def test_missing_allowed_tools_flagged(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            skill_dir = self._write_skill(
+                root, "no-tools",
+                "description: " + ("x" * 60) + "\neffort: low")
+            issues = validate.validate_skill(root, skill_dir)
+            self.assertTrue(has_error_mentioning(issues, "allowed-tools"),
+                            f"expected allowed-tools error; got {issues!r}")
+
+    def test_missing_effort_flagged(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            skill_dir = self._write_skill(
+                root, "no-effort",
+                "description: " + ("x" * 60) + "\nallowed-tools: Read")
+            issues = validate.validate_skill(root, skill_dir)
+            self.assertTrue(has_error_mentioning(issues, "effort"),
+                            f"expected effort error; got {issues!r}")
+
+    def test_invalid_effort_value_flagged(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            skill_dir = self._write_skill(
+                root, "bad-effort",
+                "description: " + ("x" * 60) + "\nallowed-tools: Read\neffort: huge")
+            issues = validate.validate_skill(root, skill_dir)
+            self.assertTrue(has_error_mentioning(issues, "effort", "invalid"),
+                            f"expected invalid-effort error; got {issues!r}")
+
+
 class HookValidationTests(unittest.TestCase):
     def test_missing_referenced_script_flagged(self):
         with tempfile.TemporaryDirectory() as td:
@@ -362,6 +415,23 @@ class HookValidationTests(unittest.TestCase):
                 has_error_mentioning(issues, "missing script", "missing.sh"),
                 f"expected missing-script error; got {issues!r}",
             )
+
+    def test_session_start_and_stop_are_known_events(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            plugin_dir = make_minimal_marketplace(root)
+            (plugin_dir / "hooks").mkdir()
+            for script in ("session.sh", "stop.sh"):
+                (plugin_dir / "hooks" / script).write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+            (plugin_dir / "hooks.json").write_text(json.dumps({
+                "hooks": {
+                    "SessionStart": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session.sh"}]}],
+                    "Stop": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop.sh"}]}],
+                },
+            }))
+            issues = validate.validate_hooks(plugin_dir)
+            self.assertFalse(any("unknown hook event" in msg for _s, _f, _l, msg in issues),
+                             f"SessionStart/Stop should be known events; got {issues!r}")
 
     def test_shebang_warning(self):
         with tempfile.TemporaryDirectory() as td:

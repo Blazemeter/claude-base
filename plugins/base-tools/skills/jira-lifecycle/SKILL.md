@@ -2,6 +2,7 @@
 name: jira-lifecycle
 description: Keep a related JIRA issue's status and comment trail in step with AI-driven work so the lifecycle is visible in JIRA metrics. Idempotent, forward-only transitions at each lifecycle point — move to In Progress when work starts, add progress comments for meaningful updates, move to In Review and post the PR link + summary when a PR opens, move to In Testing when deployed, and Closed when verified complete. Use whenever a Claude workflow acts on a related JIRA key (MOB-1234, SECVULN-99, …) at any of those points, or when a developer asks to "move the ticket to in progress / in review", "post the PR link on the ticket", or "close the ticket". Do NOT use when there is no related JIRA issue, and do NOT use to create issues.
 allowed-tools: Read, Bash(gh *), mcp__claude_ai_Atlassian_Rovo__getJiraIssue, mcp__claude_ai_Atlassian_Rovo__getTransitionsForJiraIssue, mcp__claude_ai_Atlassian_Rovo__transitionJiraIssue, mcp__claude_ai_Atlassian_Rovo__addCommentToJiraIssue
+effort: low
 ---
 
 # jira-lifecycle

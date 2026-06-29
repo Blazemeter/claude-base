@@ -2,6 +2,7 @@
 name: file-doc-task
 description: File or update a documentation-planning JIRA task for a customer-facing feature, using the documentation team's standard template. Idempotent create-or-update — safe to run early (draft a DOC-ready ticket from the specs/design to guide development) and again at finalize (reconcile the description against what was actually shipped). For FEATURE or USER-FACING work the skill first asks once whether the change needs customer-facing documentation, and only creates the ticket if it does. Also use when a developer explicitly asks to "create a doc task", "file a docs ticket", "DOC-ready ticket", "update the doc task", or hand work off to the documentation team. Do NOT use for pure refactors, internal-only fixes, or build/dependency chores.
 allowed-tools: Read, Bash(gh *), mcp__claude_ai_Atlassian_Rovo__getJiraIssue, mcp__claude_ai_Atlassian_Rovo__createJiraIssue, mcp__claude_ai_Atlassian_Rovo__editJiraIssue, mcp__claude_ai_Atlassian_Rovo__createIssueLink
+effort: medium
 ---
 
 # file-doc-task
