@@ -46,9 +46,12 @@ permissions:
 jobs:
   lifecycle-audit:
     name: Rule #5 — AI PR's issue reached In Review
-    # Only for AI-labeled PRs; skip entirely on the nightly schedule.
+    # Only on a real pull_request event (so github.event.pull_request exists)
+    # and only for PRs carrying the AI-work label. The label is fixed here
+    # rather than read from policy because a job `if:` is evaluated before
+    # checkout and cannot read repo files.
     if: >-
-      github.event_name != 'schedule' &&
+      github.event_name == 'pull_request' &&
       contains(github.event.pull_request.labels.*.name, 'ai-generated')
     runs-on: ubuntu-latest
     steps:
@@ -61,10 +64,12 @@ jobs:
       - name: Guard on JIRA secrets
         id: guard
         env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
         run: |
-          if [ -z "${JIRA_API_TOKEN:-}" ]; then
-            echo "::notice::JIRA secrets not configured — skipping compliance audit (safe default)."
+          if [ -z "${JIRA_BASE_URL:-}" ] || [ -z "${JIRA_EMAIL:-}" ] || [ -z "${JIRA_API_TOKEN:-}" ]; then
+            echo "::notice::JIRA secrets not fully configured (need JIRA_BASE_URL + JIRA_EMAIL + JIRA_API_TOKEN) — skipping compliance audit (safe default)."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -96,10 +101,12 @@ jobs:
       - name: Guard on JIRA secrets
         id: guard
         env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
         run: |
-          if [ -z "${JIRA_API_TOKEN:-}" ]; then
-            echo "::notice::JIRA secrets not configured — skipping label audit (safe default)."
+          if [ -z "${JIRA_BASE_URL:-}" ] || [ -z "${JIRA_EMAIL:-}" ] || [ -z "${JIRA_API_TOKEN:-}" ]; then
+            echo "::notice::JIRA secrets not fully configured (need JIRA_BASE_URL + JIRA_EMAIL + JIRA_API_TOKEN) — skipping label audit (safe default)."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"

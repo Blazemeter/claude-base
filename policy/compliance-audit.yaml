@@ -30,10 +30,11 @@ label_audit_jql: "__UNSET__"
 label_audit_max_results: 100
 
 # --- Rule #5: JIRA lifecycle reached review ------------------------------
-# The GitHub PR label that marks a PR as AI-driven work. The PR-triggered audit
-# only runs for PRs carrying this label (matches the rule #3 attribution gate).
-pr_ai_label: "ai-generated"
-
+# NOTE: the GitHub PR label that triggers the lifecycle audit ("ai-generated")
+# is fixed in .github/workflows/jira-compliance-audit.yml, not here — a job
+# `if:` is evaluated before checkout and cannot read this file. It is therefore
+# intentionally NOT a setting in this policy.
+#
 # A referenced issue satisfies rule #5 once it has reached In Review or beyond.
 # We accept either an explicit status-name match OR a statusCategory of "done"
 # (covers terminal statuses like Closed/Cancelled without enumerating them).

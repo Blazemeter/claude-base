@@ -177,7 +177,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(cfg["ai_label"], "AI_made")
             self.assertEqual(cfg["label_audit_jql"], "reporter = bot")
             # untouched key keeps its default
-            self.assertEqual(cfg["pr_ai_label"], "ai-generated")
+            self.assertEqual(cfg["label_audit_max_results"], 100)
 
     def test_malformed_config_raises(self):
         with tempfile.TemporaryDirectory() as td:
@@ -186,6 +186,24 @@ class ConfigTests(unittest.TestCase):
             (root / "policy" / "compliance-audit.yaml").write_text("ai_label: [unbalanced\n", encoding="utf-8")
             with self.assertRaises(audit.ConfigError):
                 audit.load_config(root)
+
+    def test_non_integer_max_results_raises(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "policy").mkdir()
+            (root / "policy" / "compliance-audit.yaml").write_text(
+                "label_audit_max_results: not-a-number\n", encoding="utf-8")
+            with self.assertRaises(audit.ConfigError):
+                audit.load_config(root)
+
+    def test_integer_like_string_max_results_coerced(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "policy").mkdir()
+            (root / "policy" / "compliance-audit.yaml").write_text(
+                'label_audit_max_results: "250"\n', encoding="utf-8")
+            cfg = audit.load_config(root)
+            self.assertEqual(cfg["label_audit_max_results"], 250)
 
 
 # --- Client construction ------------------------------------------------------
@@ -204,6 +222,19 @@ class ClientTests(unittest.TestCase):
         c.search("project = MOB AND labels != AI_generated", 50)
         self.assertIn("/rest/api/3/search/jql?jql=", captured["url"])
         self.assertNotIn(" ", captured["url"])  # spaces must be percent-encoded
+
+    def test_urllib_opener_converts_urlerror_to_jiraerror(self):
+        import urllib.error
+        import urllib.request as urlreq
+        orig = urlreq.urlopen
+        urlreq.urlopen = lambda *a, **k: (_ for _ in ()).throw(
+            urllib.error.URLError("name resolution failed"))
+        try:
+            c = audit.JiraClient("https://nope.invalid", "a@b.com", "t")  # default opener
+            with self.assertRaises(audit.JiraError):
+                c.get_issue("MOB-1")
+        finally:
+            urlreq.urlopen = orig
 
 
 class CLITests(unittest.TestCase):

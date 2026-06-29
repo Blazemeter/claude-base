@@ -64,7 +64,6 @@ DEFAULTS = {
     "ai_label": "AI_generated",
     "label_audit_jql": UNSET,
     "label_audit_max_results": 100,
-    "pr_ai_label": "ai-generated",
     "review_or_beyond_statuses": ["In Review", "Testing", "Accepted", "Closed"],
     "review_or_beyond_status_categories": ["done"],
 }
@@ -93,6 +92,14 @@ def load_config(root: Path) -> dict:
     if not isinstance(loaded, dict):
         raise ConfigError("policy/compliance-audit.yaml must be a mapping")
     cfg.update(loaded)
+    # Coerce/validate here so a bad override fails with a clean ConfigError
+    # (exit 2) rather than crashing later inside the JIRA client.
+    try:
+        cfg["label_audit_max_results"] = int(cfg["label_audit_max_results"])
+    except (TypeError, ValueError) as e:
+        raise ConfigError(
+            f"label_audit_max_results must be an integer, got "
+            f"{cfg['label_audit_max_results']!r}") from e
     return cfg
 
 
@@ -143,7 +150,14 @@ class JiraClient:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 return resp.status, resp.read()
         except urllib.error.HTTPError as e:
+            # An HTTP response with a non-2xx status — surface it as (status, body)
+            # so _get_json can include the snippet. (HTTPError is a URLError
+            # subclass, so this clause must come first.)
             return e.code, e.read()
+        except urllib.error.URLError as e:
+            # DNS / connection / TLS / timeout — no HTTP status. Convert to a
+            # JiraError so main() exits 2 cleanly instead of dumping a traceback.
+            raise JiraError(f"network error contacting JIRA: {e.reason}") from e
 
     def _get_json(self, path: str) -> dict:
         url = f"{self.base_url}{path}"
@@ -161,6 +175,10 @@ class JiraClient:
         return self._get_json(f"/rest/api/3/issue/{key}?fields=status,labels,summary")
 
     def search(self, jql: str, max_results: int) -> list[dict]:
+        # Use the enhanced JQL search endpoint `/rest/api/3/search/jql`. The
+        # legacy `/rest/api/3/search` (GET & POST) was DEPRECATED by Atlassian
+        # and removed for JIRA Cloud on 2025-05-01, so the new endpoint is the
+        # correct one going forward. It still returns an `issues` array.
         from urllib.parse import quote
         path = (f"/rest/api/3/search/jql?jql={quote(jql)}"
                 f"&maxResults={int(max_results)}&fields=labels,summary")
