@@ -12,6 +12,14 @@
       "version": "0.1.0",
       "keywords": ["base", "templates", "skills", "commands", "agents", "hooks", "starter"],
       "category": "templates"
+    },
+    {
+      "name": "mend_blz",
+      "source": "./plugins/mend_blz",
+      "description": "Mend vulnerability workflow for Blazemeter components (a.blazemeter, dagger) — fix → PR → Jira (MOB) → Jenkins, registry-driven via services.json",
+      "version": "0.1.0",
+      "keywords": ["mend", "whitesource", "security", "cve", "vulnerabilities", "blazemeter"],
+      "category": "development"
     }
   ]
 }
