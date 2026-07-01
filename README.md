@@ -35,6 +35,59 @@ To verify:
 /base-tools:example-command           # try the example slash command
 ```
 
+## The documentation-ticket workflow (STANDARDS rule #4) — and how every pipeline inherits it
+
+Feature / user-facing work must decide, once, whether it needs customer-facing
+docs and — only when it does — file a linked `DOC-ready:` planning ticket for the
+docs team. The guarantee lives entirely in **`base-tools`**, so any marketplace,
+repo, or pipeline that installs the plugin inherits it with **no per-pipeline
+wiring**. Three mechanisms, working together:
+
+1. **PR gate (hard enforcement).** `require-doc-task-decision.sh` (PreToolUse on
+   `gh pr create`) blocks a PR on any real-JIRA branch until the `file-doc-task`
+   skill has recorded a decision marker at `.claude/doc-task-decisions/<KEY>.json`.
+   Because *every* workflow opens a PR — the SDD pipeline, the bug-fix pipeline, a
+   brand-new pipeline, or a human working by hand — gating the PR (not a
+   pipeline-specific phase) is what makes the requirement universally inherited.
+   The `file-doc-task` skill writes that marker at every outcome:
+   `filed` / `updated` / `not-required` / `not-applicable` (a pure refactor just
+   needs the quick `not-applicable` pass).
+
+2. **Early ask (design/spec phase).** The always-on `SessionStart` primer and the
+   `nudge-doc-task-early.py` PreSkill hook prompt for the *early* draft the moment
+   a design/spec/plan skill runs — so docs impact is decided during design, not
+   discovered at PR time. The skill is idempotent: the early draft is reconciled
+   to as-built at finalize, never duplicated.
+
+3. **Config + inheritance.** The skill refuses to file until a real docs JIRA
+   project is set — see below.
+
+### Adopting this: consume vs. fork
+
+- **Consume (recommended — real auto-inheritance).** Keep the `claude-base`
+  marketplace added and `/plugin install base-tools@claude-base`. Every future
+  improvement to the doc-task workflow lands automatically on `/plugin update` —
+  this is the only model where "the marketplace updates itself." Then create
+  **`policy/doc-task.yaml`** at *your* repo root (copy the bundled template at
+  `plugins/base-tools/skills/file-doc-task/references/doc-task.config.default.yaml`)
+  and set your real `project_key`.
+- **Fork.** Forking copies a snapshot — it will not auto-update. `policy/doc-task.yaml`
+  already exists at the repo root; just set `project_key`. To stay current, add
+  this repo as an upstream remote and periodically merge `plugins/base-tools/`
+  and `policy/`.
+
+Until `project_key` is set, the skill refuses to file and the `SessionStart` hook
+prints a one-line ⚠️ warning every session so an unconfigured setup can't fail
+silently.
+
+### For pipeline authors
+
+You get the PR gate for free. To also drive the **early** draft deterministically,
+call the `file-doc-task` skill at your design/spec-review gate (early mode) and
+again at finalize (reconcile) — persist the returned doc-task key so the finalize
+pass reconciles instead of re-filing. The SDD and bug-fix pipelines already do
+this; new pipelines should follow the same two-call contract.
+
 ## What's inside
 
 ```

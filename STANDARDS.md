@@ -118,13 +118,23 @@ feature facts, anchors development to a stated customer outcome, and lets them
 track AI-originated dev work that has downstream doc impact.
 
 **Enforced by**:
-- Client: the `file-doc-task` skill in `plugins/base-tools/` (the shared,
+- Client (skill): the `file-doc-task` skill in `plugins/base-tools/` (the shared,
   idempotent mechanism — pipelines call it early to draft and at finalize to
   reconcile, or just once at finalize). The skill includes the `AI_generated`
   label (rule #2) in the create call up front; the rule-2 hook blocks the
-  `createJiraIssue` call if it's missing.
+  `createJiraIssue` call if it's missing. At every terminal outcome it records a
+  decision marker at `.claude/doc-task-decisions/<key>.json`.
+- Client (PR gate): `require-doc-task-decision.sh` (PreToolUse on `gh pr create`)
+  **blocks the PR** on any real-JIRA branch until that decision marker exists.
+  Gating the universal PR-open event — not a pipeline phase — is what makes every
+  workflow inherit the requirement with no per-pipeline wiring. Honors
+  `CLAUDE_STANDARDS_SKIP=1`.
+- Client (early nudge): the `SessionStart` primer + `nudge-doc-task-early.py`
+  PreSkill hook prompt for the early draft during design/spec/plan phases.
 - Config: `policy/doc-task.yaml` (JIRA project, issue type, link type — set
-  per org; the skill refuses to file while the project is unset).
+  per org; the skill refuses to file while the project is unset, and
+  `SessionStart` warns until it is). Resolves consuming-repo config first, then
+  the bundled `references/doc-task.config.default.yaml`.
 - Server: *(optional, planned)* a lint that — only for PRs labeled
   `customer-facing` — verifies a linked `ready-for-docs` task exists. Held
   until the gate is adopted, since a ticket is filed only when docs are needed.

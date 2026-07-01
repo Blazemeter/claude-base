@@ -11,3 +11,6 @@ __pycache__/
 .idea/
 .vscode/
 *.iml
+
+# STANDARDS rule #4 — local doc-task decision markers (per-branch, not shared)
+.claude/doc-task-decisions/

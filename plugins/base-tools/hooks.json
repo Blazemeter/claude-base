@@ -133,6 +133,16 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/inject-ai-generated-label.sh"
           }
         ]
+      },
+      {
+        "_comment": "STANDARDS rule 4 — block `gh pr create` until a doc-task decision is recorded for the branch's JIRA key. Universal PR gate; every workflow inherits it.",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/require-doc-task-decision.sh"
+          }
+        ]
       }
     ],
     "PreSkill": [
@@ -142,6 +152,11 @@
           {
             "type": "command",
             "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/log-skill-activation.py"
+          },
+          {
+            "_comment": "STANDARDS rule 4 — nudge the EARLY doc-task draft when a design/spec/plan skill activates. Advisory; filters by skill name inside the script.",
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/nudge-doc-task-early.py"
           }
         ]
       }
