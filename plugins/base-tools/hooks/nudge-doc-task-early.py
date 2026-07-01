@@ -23,7 +23,6 @@ filtering happens here so we don't depend on matcher semantics for skill names.
 
 import json
 import os
-import re
 import sys
 import tempfile
 from datetime import datetime, timezone
