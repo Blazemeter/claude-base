@@ -80,6 +80,7 @@ Components are **data-driven** from [`references/services.json`](references/serv
 ## Notes
 
 - Each component's Jenkins build runs **unit-test · prisms · mend** stages. The shared `API_TESTS-CI` suite is >1h, flaky/not-green, and run manually at developer discretion — **never gate the fix loop on it.**
+- **`PUSH_TO_GCR`** (boolean job parameter, default `False`) is the **"push to GCR" checkbox** — the fix loop triggers **every component's** build with it **checked** so the remediated image publishes to **GCR `gcr.io/verdant-bulwark-278`** (image libs: `bm-backend`, `bm-dagger`, …). Other boolean params (`RUN_UNIT_TESTS`, `PERFORM_*_SCAN`, `FAIL_JOB_ON_SCAN_FAILURES`, `NO_CACHE_FLAG`, `UPDATE_VERSION`) stay at their defaults.
 - Code Insight (`codeinsight-project.yml`, Revenera) is separate license scanning — not the Mend CVE flow.
 
 # Scheduling
@@ -126,7 +127,9 @@ Order: **alerts → branch → fix → local compile+unit-test → push → Jenk
 3. **Apply the fix** for **every in-scope alert**, batched into the one branch, per the component's `stack` (see "Fix recipe by `stack`"). **If a dependency's fix needs a breaking/major upgrade that fails the build** (within the attempt cap below), **revert just that dependency**, keep the other fixes, and record the deferred one in the summary **Notes** (e.g. "symfony/yaml 3.4 → major upgrade required, deferred") — one breaking dep must not fail the whole batch.
 4. **Compile + run unit tests locally** (per `stack`: `./gradlew test` for dagger; `mvn -q -B verify` for search; `make phpstan` + `make test-docker-cov` for a.blazemeter). **Only push if green.** If local tests fail, fix forward locally first — don't burn a Jenkins cycle. If the local env can't run them (e.g. Docker unavailable), say so in the summary and rely on the Jenkins gate.
 5. **Commit** (keep the `Co-Authored-By` trailer) → **push** `<branch>` to `github.com/<repo>`.
-6. **Poll blazect Jenkins until green.** The multibranch pipeline auto-triggers on push — poll `https://blazect-jenkins.blazemeter.com/job/<jenkins_folder>/job/<branch>/` for the build (unit-test · prisms · mend stages). Never gate on `API_TESTS-CI`.
+6. **Trigger the branch build with `PUSH_TO_GCR=true`, then poll until green.** After the push, kick a parameterized build so the remediated image publishes to GCR (`gcr.io/verdant-bulwark-278`):
+   `POST https://blazect-jenkins.blazemeter.com/job/<jenkins_folder>/job/<branch>/buildWithParameters?PUSH_TO_GCR=true`
+   (the job's **"push to GCR" checkbox** — `PUSH_TO_GCR`, default `False`; check it. Leave the other params at their defaults.) Then poll `…/job/<jenkins_folder>/job/<branch>/lastBuild/` for the build (unit-test · prisms · mend stages). Never gate on `API_TESTS-CI`. **Do this for every component's job** (BACKEND-CI, DAGGER-CI, SEARCH-CI, and any repo added later).
    - **If RED:** try to **fix forward** on the same branch and re-push (re-triggers the build) — reverting/deferring a breaking dependency (step 3) counts as fixing forward. **Cap at 3 fix attempts per run** (local-test + Jenkins failures combined). If the build still can't go green after the 3rd attempt, **stop** — do **not** open a PR or Jira — and record the reason in the summary **Notes**. (A run that goes green after deferring some breaking deps still proceeds to PR with the fixes that passed.)
    - **If GREEN:** continue.
 7. **Open the PR** from `<branch>` into `integration_branch`. (No GitHub reviewer is set — ownership is tracked via the Jira assignee.)
