@@ -23,10 +23,6 @@ The skill is **argument-driven** — read what the user asks for; don't assume:
 
 > Example: *"fix mend for a.blazemeter.com for critical level"* → component `a.blazemeter`, severity scope = **CRITICAL only**.
 
-**Two ways to run:**
-- **On-demand** — user names a component (+ optional severity), as above.
-- **Scheduled (full sweep)** — an external scheduler invokes `mend scheduled`; the skill runs the fix loop for **every component in `services.json`**, at **all severities (CRITICAL + HIGH + MEDIUM + LOW)**, producing **one branch / PR / Jira per repository** (all severities batched). Cadence (daily / weekly / off) is just how often the scheduler fires — see "Scheduling".
-
 # Credentials
 
 All three required from environment or `~/.claude/team-config.md`:
@@ -82,19 +78,6 @@ Components are **data-driven** from [`references/services.json`](references/serv
 - Each component's Jenkins build runs **unit-test · prisms · mend** stages. The shared `API_TESTS-CI` suite is >1h, flaky/not-green, and run manually at developer discretion — **never gate the fix loop on it.**
 - **`PUSH_TO_GCR`** (boolean job parameter, default `False`) is the **"push to GCR" checkbox** — the fix loop triggers **every component's** build with it **checked** so the remediated image publishes to **GCR `gcr.io/verdant-bulwark-278`** (image libs: `bm-backend`, `bm-dagger`, …). Other boolean params (`RUN_UNIT_TESTS`, `PERFORM_*_SCAN`, `FAIL_JOB_ON_SCAN_FAILURES`, `NO_CACHE_FLAG`, `UPDATE_VERSION`) stay at their defaults.
 - Code Insight (`codeinsight-project.yml`, Revenera) is separate license scanning — not the Mend CVE flow.
-
-# Scheduling
-
-A **scheduled run is a full sweep**: iterate **every component in `services.json`** and run the full fix loop for each at **all severities — CRITICAL, HIGH, MEDIUM, and LOW**. **One branch / one PR / one Jira ticket per repository** — every in-scope fix for that repo (all severities) is **batched into that single branch/PR** (never split per severity or per alert). The sweep ends with one combined summary table covering all repositories.
-
-Cadence is a **global** choice — **`daily`** · **`weekly`** · **`off`** — meaning simply *how often the sweep fires*. It is **not** per-component and lives in the external scheduler, not in `services.json`.
-
-**The skill does not fire itself** — wire the timed trigger externally to invoke `mend scheduled` on the chosen cadence:
-- **Claude Code routine** — `/schedule` a daily or weekly cron agent that runs `mend scheduled`.
-- **GitHub Actions** — a workflow with `on: schedule:` cron (`0 6 * * *` daily / `0 6 * * 1` weekly) invoking the bot/CLI.
-- **Jenkins** — a periodic timer-triggered job.
-
-`off` = no scheduler configured (on-demand only).
 
 # Quick reference (Mend REST v1.3)
 
