@@ -23,6 +23,10 @@ The skill is **argument-driven** — read what the user asks for; don't assume:
 
 > Example: *"fix mend for a.blazemeter.com for critical level"* → component `a.blazemeter`, severity scope = **CRITICAL only**.
 
+**Two ways to run:**
+- **On-demand** — user names a component (+ optional severity), as above.
+- **Scheduled (full sweep)** — an external scheduler invokes `mend scheduled`; the skill runs the fix loop for **every component in `services.json`**, at **all severities (CRITICAL + HIGH + MEDIUM + LOW)**, producing **one branch / PR / Jira per repository** (all severities batched). Cadence (daily / weekly / off) is just how often the scheduler fires — see "Scheduling".
+
 # Credentials
 
 All three required from environment or `~/.claude/team-config.md`:
@@ -56,22 +60,40 @@ Components are **data-driven** from [`references/services.json`](references/serv
 | `owner` | **per-repo owner — a human display name** (text), set by the team. Resolved to a Jira accountId and set as the **Jira assignee**. Not used for GitHub. Empty → falls back to `tcohen`. |
 | `jenkins_folder` | **multibranch** folder on `https://blazect-jenkins.blazemeter.com`. A branch build lives at `/job/<jenkins_folder>/job/<branch>/` |
 | `integration_branch` | the branch the fix branches off and PRs back into (`develop`/`master`) |
-| `stack` | drives the fix recipe — and implies the manifest file (`php-composer`→`composer.json`, `gradle-springboot`→`build.gradle.kts`) |
+| `stack` | drives the fix recipe — and implies the manifest file (`php-composer`→`composer.json`, `gradle-springboot`→`build.gradle.kts`, `maven-springboot`→`pom.xml`) |
 | `description` | human label |
 
 ## Fix recipe by `stack`
 
-- **`php-composer`** (a.blazemeter) — edit the constraint in `composer.json` → `composer update <vendor/pkg> --with-dependencies` → commit the updated `composer.lock`.
+> **Golden rule — fix the DIRECT dependency, never the transitive.** If a vulnerable library **Y** is pulled in by a direct dependency **X**, bump **X** so it resolves a fixed **Y**. Do **not** pin/override the transitive **Y** directly. For BOM-managed transitives (Spring Framework, micrometer, logback, jackson under Spring Boot), that means **bump the Spring Boot BOM version** (`spring-boot.version`) — the one dep that brings them all — *not* individual `<spring-framework.version>`/`<micrometer.version>`/etc. overrides. If no direct-dep / BOM bump resolves the alert, **defer and note it** — never pin the transitive.
+
+- **`php-composer`** (a.blazemeter) — bump the **direct `require`** in `composer.json` (incl. the direct dep that pulls a vulnerable transitive, e.g. bump `guzzle` to pull a fixed `psr7`) → `composer update <vendor/pkg> --with-dependencies` → commit `composer.lock`.
   - **Cross-check the fix version** with `composer audit` — Mend's suggested version may itself be under a Packagist advisory (e.g. aws/aws-sdk-php 3.368.0 was); escalate to the latest non-advisory version.
   - **Local compile + unit test (pre-push):** `make phpstan` (static check) + `make test-docker-cov` (the dockerized unit suite CI runs — needs Docker). Green here ⇒ very likely green on `BACKEND-CI`.
   - **Internal forks** resolve from `github.com/Blazemeter` git `repositories` (`mongator`, `mondator`, `php-resque-ex`, `php-resque-ex-scheduler`, `PHP-Multivariate-Regression`, `Restler`, `mandrill-api-php`), not Packagist. A CVE in one of these is fixed **upstream in that repo + a ref bump**, not via a registry version.
-- **`gradle-springboot`** (dagger) — BOM-managed lib → override the Spring Boot version property; directly-pinned lib → bump the literal version in `build.gradle.kts`. Verify deps with `./gradlew dependencies`.
+- **`gradle-springboot`** (dagger) — transitive brought by the Spring Boot BOM → **bump the Spring Boot version** (the BOM that brings it), not the individual transitive; a genuinely direct dep → bump its literal version in `build.gradle.kts`. Verify deps with `./gradlew dependencies`.
   - **Local compile + unit test (pre-push):** `./gradlew test` (compiles + runs the unit suite).
+- **`maven-springboot`** (search) — transitive brought by the Spring Boot BOM → **bump `<spring-boot.version>`** in `pom.xml` (the BOM), *not* individual `<spring-framework.version>`/`<micrometer.version>`/etc.; a genuinely direct dep → bump its `<version>`. Verify deps with `mvn -q dependency:tree`.
+  - **Local compile + unit test (pre-push):** `mvn -q -B verify` (compiles + runs the unit suite).
+  - **Maven repo note:** Blazemeter builds don't use `aws-nexus` (that's an unrelated machine-global mirror); its image registry is **GCR `gcr.io/verdant-bulwark-278`**. Let the repo's own build config resolve dependencies — don't inject a Nexus.
 
 ## Notes
 
 - Each component's Jenkins build runs **unit-test · prisms · mend** stages. The shared `API_TESTS-CI` suite is >1h, flaky/not-green, and run manually at developer discretion — **never gate the fix loop on it.**
 - Code Insight (`codeinsight-project.yml`, Revenera) is separate license scanning — not the Mend CVE flow.
+
+# Scheduling
+
+A **scheduled run is a full sweep**: iterate **every component in `services.json`** and run the full fix loop for each at **all severities — CRITICAL, HIGH, MEDIUM, and LOW**. **One branch / one PR / one Jira ticket per repository** — every in-scope fix for that repo (all severities) is **batched into that single branch/PR** (never split per severity or per alert). The sweep ends with one combined summary table covering all repositories.
+
+Cadence is a **global** choice — **`daily`** · **`weekly`** · **`off`** — meaning simply *how often the sweep fires*. It is **not** per-component and lives in the external scheduler, not in `services.json`.
+
+**The skill does not fire itself** — wire the timed trigger externally to invoke `mend scheduled` on the chosen cadence:
+- **Claude Code routine** — `/schedule` a daily or weekly cron agent that runs `mend scheduled`.
+- **GitHub Actions** — a workflow with `on: schedule:` cron (`0 6 * * *` daily / `0 6 * * 1` weekly) invoking the bot/CLI.
+- **Jenkins** — a periodic timer-triggered job.
+
+`off` = no scheduler configured (on-demand only).
 
 # Quick reference (Mend REST v1.3)
 
@@ -102,7 +124,7 @@ Order: **alerts → branch → fix → local compile+unit-test → push → Jenk
    - **Only alerts in the component's `stack` ecosystem are fixed.** Alerts in a different ecosystem/manifest (e.g. Python `requirements.txt` or npm `package.json` under `tools/` in a PHP repo) are **deferred and listed in the summary**, not fixed here.
 2. **Create a unique, date-stamped branch — one per run** — named `mend-fix-<YYYYMMDD-HHMMSS>` (e.g. `mend-fix-$(date +%Y%m%d-%H%M%S)`) off `integration_branch`. **No component in the name** — component names like `a.blazemeter.com` contain dots (not Docker-tag-safe); each component is its own repo, so the timestamp alone is unique. A fresh branch every run (referred to as `<branch>` below); never reuse a prior run's branch. Optionally close any prior **open** `mend-fix-*` PR in the repo with a "superseded by newer mend run" comment.
 3. **Apply the fix** for **every in-scope alert**, batched into the one branch, per the component's `stack` (see "Fix recipe by `stack`"). **If a dependency's fix needs a breaking/major upgrade that fails the build** (within the attempt cap below), **revert just that dependency**, keep the other fixes, and record the deferred one in the summary **Notes** (e.g. "symfony/yaml 3.4 → major upgrade required, deferred") — one breaking dep must not fail the whole batch.
-4. **Compile + run unit tests locally** (per `stack`: `./gradlew test` for dagger; `make phpstan` + `make test-docker-cov` for a.blazemeter). **Only push if green.** If local tests fail, fix forward locally first — don't burn a Jenkins cycle. If the local env can't run them (e.g. Docker unavailable), say so in the summary and rely on the Jenkins gate.
+4. **Compile + run unit tests locally** (per `stack`: `./gradlew test` for dagger; `mvn -q -B verify` for search; `make phpstan` + `make test-docker-cov` for a.blazemeter). **Only push if green.** If local tests fail, fix forward locally first — don't burn a Jenkins cycle. If the local env can't run them (e.g. Docker unavailable), say so in the summary and rely on the Jenkins gate.
 5. **Commit** (keep the `Co-Authored-By` trailer) → **push** `<branch>` to `github.com/<repo>`.
 6. **Poll blazect Jenkins until green.** The multibranch pipeline auto-triggers on push — poll `https://blazect-jenkins.blazemeter.com/job/<jenkins_folder>/job/<branch>/` for the build (unit-test · prisms · mend stages). Never gate on `API_TESTS-CI`.
    - **If RED:** try to **fix forward** on the same branch and re-push (re-triggers the build) — reverting/deferring a breaking dependency (step 3) counts as fixing forward. **Cap at 3 fix attempts per run** (local-test + Jenkins failures combined). If the build still can't go green after the 3rd attempt, **stop** — do **not** open a PR or Jira — and record the reason in the summary **Notes**. (A run that goes green after deferring some breaking deps still proceeds to PR with the fixes that passed.)
