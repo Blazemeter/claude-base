@@ -1,6 +1,6 @@
 # Mend API reference (Blazemeter)
 
-The Mend (formerly WhiteSource) REST API (v1.3) used by the `mend_blz` skill.
+The Mend (formerly WhiteSource) REST API (v1.3) used by the `mend` skill.
 
 ## Base URL & auth
 

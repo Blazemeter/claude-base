@@ -1,7 +1,7 @@
 {
   "name": "mend_blz",
-  "description": "Mend (WhiteSource) vulnerability workflow for Blazemeter components (a.blazemeter, dagger) — auth, project lookup, severity classification, CVE fix → PR → Jira (MOB) → Jenkins.",
-  "version": "0.1.0",
+  "description": "End-to-end Mend remediation recipe for Blazemeter — composes the mend, dep-remediation, jenkins, github, and jira skills into one loop: alerts → fix on a dated branch → Jenkins green → PR → Jira (MOB). Holds the component registry and the fix-loop order/gates; the reusable knowledge lives in the composed skills.",
+  "version": "0.2.0",
   "author": { "name": "Tehila" },
-  "keywords": ["mend", "whitesource", "security", "cve", "vulnerabilities", "blazemeter"]
+  "keywords": ["mend", "whitesource", "security", "cve", "vulnerabilities", "blazemeter", "recipe"]
 }
