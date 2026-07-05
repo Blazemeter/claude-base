@@ -22,18 +22,19 @@ These auto-load alongside this recipe; defer to them for the "how," and follow t
 
 Argument-driven — read what the user asks; don't assume:
 
-- **Component** (required): match the name against `services.json` (key or `repo`). "a.blazemeter.com"/"a.blazemeter" → `a.blazemeter`; "dagger" → `dagger`. No match → list the registry keys and ask.
+- **Component** (required): match the name against the component registry (see [Component registry](#component-registry)) by key or `repo`. "a.blazemeter.com"/"a.blazemeter" → `a.blazemeter`; "dagger" → `dagger`. No match → list the registry keys and ask.
 - **Severity scope** (optional): the level(s) named — `critical`/`high`/`medium`/`low` or combos ("high/critical", "all"). Act **only** on those (case-insensitive). **Default = HIGH + CRITICAL.**
 
 > Example: *"fix mend for a.blazemeter.com for critical level"* → component `a.blazemeter`, scope = CRITICAL only.
 
 # Component registry
 
-The **authoritative registry lives in the orchestrator** — `config/services.json` in
-`blz-claude-orchestrator` (single source of truth; onboard a repo by adding an entry there). On an
-orchestrated run the orchestrator passes the resolved target entry into the prompt — **use that,
-verbatim.** For a standalone/interactive run, read that file (or ask the user) for a per-component
-entry with these fields:
+The registry is **not bundled with this skill** — its single source of truth is
+`config/services.json` in the **blz-claude-orchestrator** repo (onboard a repo by adding an entry
+there). On an orchestrated run the orchestrator passes the resolved target entry into the prompt —
+**use that, verbatim.** For a standalone/interactive run (this skill alone, without the
+orchestrator), there is no local registry file to read — **ask the user for** (or copy from the
+orchestrator's `config/services.json`) a per-component entry with these fields:
 
 | Field | Meaning |
 |-------|---------|

@@ -3,5 +3,6 @@
   "description": "End-to-end Mend remediation recipe for Blazemeter — composes the mend, dep-remediation, jenkins, github, and jira skills into one loop: alerts → fix on a dated branch → Jenkins green → PR → Jira (MOB). Holds the fix-loop order/gates; the reusable knowledge lives in the composed skills and the component registry lives in the orchestrator (config/services.json).",
   "version": "0.2.0",
   "author": { "name": "Tehila" },
+  "license": "MIT",
   "keywords": ["mend", "whitesource", "security", "cve", "vulnerabilities", "blazemeter", "recipe"]
 }
