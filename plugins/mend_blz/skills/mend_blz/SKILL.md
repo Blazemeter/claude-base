@@ -29,9 +29,11 @@ Argument-driven — read what the user asks; don't assume:
 
 # Component registry
 
-Data-driven from [`references/services.json`](references/services.json) — keyed by component alias,
-each entry carrying `repo` / `mend_project` / `owner` / `jenkins_folder` / `integration_branch` /
-`stack` / `description`. **To onboard a repo, add an entry — no skill edits.**
+The **authoritative registry lives in the orchestrator** — `config/mend/services.json` in
+`blz-claude-orchestrator` (single source of truth; onboard a repo by adding an entry there). On an
+orchestrated run the orchestrator passes the resolved target entry into the prompt — **use that,
+verbatim.** For a standalone/interactive run, read that file (or ask the user) for a per-component
+entry with these fields:
 
 | Field | Meaning |
 |-------|---------|
@@ -75,5 +77,5 @@ Order: **alerts → branch → fix → local compile+unit-test → push → Jenk
 
 # References
 
-- [services.json](references/services.json) — the component registry (add an entry to onboard a repo).
+- Component registry (authoritative): `config/mend/services.json` in **blz-claude-orchestrator**.
 - Composed skills: **mend**, **dep-remediation**, **jenkins**, **github**, **jira**.
