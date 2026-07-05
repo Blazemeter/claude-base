@@ -1,13 +1,13 @@
 ---
 name: mend
-description: Read and interpret Mend (formerly WhiteSource) SCA data — authenticate to the REST API v1.3, look up a project token, fetch SECURITY_VULNERABILITY alerts, and classify CVE severity. Load whenever the work involves Mend/WhiteSource, CVEs from Mend, or fetching/triaging vulnerability alerts. Generic SCA-read knowledge; the fix workflow lives in dep-remediation + the mend_blz recipe.
+description: Read and interpret Mend (formerly WhiteSource) SCA data — authenticate to the REST API v1.3, look up a project token, fetch SECURITY_VULNERABILITY alerts, and classify CVE severity. Load whenever the work involves Mend/WhiteSource, CVEs from Mend, or fetching/triaging vulnerability alerts. Generic SCA-read knowledge; the fix workflow lives in dep-remediation + the mend-blz recipe.
 ---
 
 # When to use
 
 Load this skill for any Mend/WhiteSource read: fetching a project's alerts, resolving a project
 token, or interpreting CVE severity. It does **not** apply fixes — pair it with **dep-remediation**
-(how to fix), and the **mend_blz** recipe drives the end-to-end loop.
+(how to fix), and the **mend-blz** recipe drives the end-to-end loop.
 
 # Credentials
 

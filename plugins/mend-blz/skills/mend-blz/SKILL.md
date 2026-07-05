@@ -1,5 +1,5 @@
 ---
-name: mend_blz
+name: mend-blz
 description: End-to-end Mend vulnerability remediation for Blazemeter components (a.blazemeter, dagger, search). Composes the mend, dep-remediation, jenkins, github, and jira skills into one loop — Mend alerts → dependency fix on a fresh date-stamped branch → Jenkins green → PR → Jira (MOB). Load when the user wants to fix/remediate Mend/WhiteSource vulnerabilities for a Blazemeter service.
 ---
 
