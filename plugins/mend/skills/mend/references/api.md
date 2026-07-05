@@ -5,9 +5,14 @@ The Mend (formerly WhiteSource) REST API (v1.3) used by the `mend` skill.
 ## Base URL & auth
 
 - **Base URL:** `${MEND_URL}/api/v1.3` → `https://saas-eu.whitesourcesoftware.com/api/v1.3`.
-- **Auth:** all calls are POSTs with a JSON body. Every request body MUST include `userKey` and `orgToken`:
+- **Auth:** all calls are POSTs with a JSON body carrying `userKey` **plus the token that scopes the call**:
+  - **org-scoped** (`getOrganizationProjectVitals`) → `userKey` + `orgToken`
+  - **project-scoped** (`getProjectAlertsByType`) → `userKey` + `projectToken` (the token resolved from the org call; no `orgToken` needed once it's known)
   ```json
-  { "requestType": "...", "userKey": "${MEND_USER_KEY}", "orgToken": "${MEND_ORG_TOKEN}", ... }
+  // org-scoped
+  { "requestType": "getOrganizationProjectVitals", "userKey": "${MEND_USER_KEY}", "orgToken": "${MEND_ORG_TOKEN}" }
+  // project-scoped
+  { "requestType": "getProjectAlertsByType", "userKey": "${MEND_USER_KEY}", "projectToken": "<resolved>", "alertType": "SECURITY_VULNERABILITY" }
   ```
 - `MEND_ORG_TOKEN` is the Blazemeter org token, exported under both names `Blazemeter` and `Blazemeter_GHC` (same value — see SKILL.md "Credentials"). No org selection logic.
 - All three credentials come from environment / `~/.claude/team-config.md`. **Never echo them.**
