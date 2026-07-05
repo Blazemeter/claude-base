@@ -29,7 +29,7 @@ Argument-driven — read what the user asks; don't assume:
 
 # Component registry
 
-The **authoritative registry lives in the orchestrator** — `config/mend/services.json` in
+The **authoritative registry lives in the orchestrator** — `config/services.json` in
 `blz-claude-orchestrator` (single source of truth; onboard a repo by adding an entry there). On an
 orchestrated run the orchestrator passes the resolved target entry into the prompt — **use that,
 verbatim.** For a standalone/interactive run, read that file (or ask the user) for a per-component
@@ -77,5 +77,5 @@ Order: **alerts → branch → fix → local compile+unit-test → push → Jenk
 
 # References
 
-- Component registry (authoritative): `config/mend/services.json` in **blz-claude-orchestrator**.
+- Component registry (authoritative): `config/services.json` in **blz-claude-orchestrator**.
 - Composed skills: **mend**, **dep-remediation**, **jenkins**, **github**, **jira**.
