@@ -1,0 +1,8 @@
+{
+  "name": "mend",
+  "description": "Mend (formerly WhiteSource) SCA knowledge for Blazemeter — REST API v1.3 auth, project-token lookup, vulnerability alert fetch, CVE severity interpretation. Reusable by any flow that reads Mend.",
+  "version": "0.1.0",
+  "author": { "name": "Tehila" },
+  "license": "MIT",
+  "keywords": ["mend", "whitesource", "sca", "cve", "security", "vulnerabilities"]
+}
