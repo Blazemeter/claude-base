@@ -32,8 +32,8 @@
     {
       "name": "jenkins",
       "source": "./plugins/jenkins",
-      "description": "Blazemeter blazect Jenkins gate — trigger a multibranch build with PUSH_TO_GCR + PERFORM_WHITESOURCE_SCAN, gate on green, fix-forward, never gate on API_TESTS-CI.",
-      "version": "0.1.1",
+      "description": "Blazemeter blazect Jenkins gate — trigger a multibranch build with PUSH_TO_GCR + PERFORM_WHITESOURCE_SCAN, gate on the specific triggered build (not lastBuild), fix-forward, never gate on API_TESTS-CI.",
+      "version": "0.1.2",
       "keywords": ["jenkins", "ci", "blazect", "gcr", "build-gate"],
       "category": "development"
     },
@@ -48,16 +48,16 @@
     {
       "name": "jira",
       "source": "./plugins/jira",
-      "description": "Create/transition Blazemeter MOB Jira tickets — board 5348, Task, Product/Scrum-Team/Sprint fields, assignee = repo owner, status In Review. Ticket summary/name is caller-supplied.",
-      "version": "0.2.1",
+      "description": "Create/transition Blazemeter MOB Jira tickets — board 5348, Task, Product/Scrum-Team/Sprint fields, assignee = repo owner, status In Review, bounded 429 backoff. Ticket summary/name is caller-supplied.",
+      "version": "0.2.2",
       "keywords": ["jira", "mob", "atlassian", "ticket"],
       "category": "development"
     },
     {
       "name": "mend-blz",
       "source": "./plugins/mend-blz",
-      "description": "End-to-end Mend remediation recipe — composes mend + dep-remediation + jenkins + github + jira into one loop (alerts → fix → Jenkins green → PR → Jira → Confluence report), registry-driven via services.json.",
-      "version": "0.3.3",
+      "description": "End-to-end Mend remediation recipe — composes mend + dep-remediation + jenkins + github + jira into one loop (alerts → fix → Jenkins green → Confluence report → PR → Jira, linked back to Confluence when deferred), registry-driven via services.json.",
+      "version": "0.3.7",
       "keywords": ["mend", "whitesource", "security", "cve", "vulnerabilities", "blazemeter", "recipe"],
       "category": "development"
     }

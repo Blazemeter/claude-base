@@ -1,8 +1,25 @@
 # Mend Confluence unfixed-vulnerabilities report
 
-Mechanics for step 11 of the `mend-blz` fix loop: append a row per unfixed alert to the shared
-tracking table on Confluence. One page, shared across every component/run — an accumulating log,
-not a per-run replacement.
+Mechanics for step 7 of the `mend-blz` fix loop: upsert one row per **currently unfixable**
+library into the shared tracking table on Confluence. One page, shared across every
+component/run. This is a **manager-facing quick view** — deliberately narrow: only libraries that
+genuinely can't be fixed right now, one row each, kept current rather than accumulated.
+
+## What belongs on this page (and what doesn't)
+
+- **Include:** a breaking-major-version fix required, no fix version available upstream at all, or
+  the ecosystem is out-of-recipe for `dep-remediation` (ecosystem the skill can't handle at all).
+- **Exclude — `pending Mend rescan`:** already fixed on the branch/master, just waiting for Mend's
+  next scan to reflect it. Not a real open problem; listing it would be noise on a page meant for a
+  quick read.
+- **Exclude — out-of-scope severity:** an alert simply not attempted this run because it's outside
+  the requested severity scope (e.g. a low/medium alert on a high/critical-only run). That's "not
+  attempted," not "can't be fixed" — don't report it here.
+- **Primary library only, never the transitive one.** Report the library that actually governs the
+  fix per the golden rule (the direct/managed dependency you'd bump in the manifest/BOM) — not some
+  inner transitive jar nested inside it that isn't independently actionable. If Mend's alert names a
+  transitive artifact, resolve it up to the direct/managed dependency that pulls it in before writing
+  the row.
 
 ## Page
 
@@ -39,39 +56,57 @@ Response shape (fields needed below):
 Capture `title`, `spaceId`, `version.number`, and `body.storage.value` — all four are required for
 the PUT below.
 
-### 2. Append rows to the existing table
+### 2. Upsert rows in the existing table
 
-The page body is Confluence **storage format** (XHTML). If the table already exists (every run
-after the first), append `<tr>` rows just before its closing `</tbody></table>`. If this is the
-first-ever write (no table present), append a new table at the end of `body.storage.value`:
+The page body is Confluence **storage format** (XHTML). Table schema:
 
 ```html
 <table>
   <thead>
     <tr>
-      <th>Repository</th><th>Vulnerability</th><th>Version</th>
-      <th>Fix version needed</th><th>Reason</th><th>Date of run</th>
+      <th>Repository</th><th>Library</th><th>Current version</th><th>Fixed version</th>
+      <th>Severity</th><th>Vulnerability</th><th>Reason</th><th>Date</th>
     </tr>
   </thead>
   <tbody>
-    <!-- one <tr> per unfixed alert -->
+    <!-- one <tr> per currently-unfixable library -->
   </tbody>
 </table>
 ```
 
-One `<tr>` per unfixed alert from step 1's triage:
+If this is the first-ever write (no table present), append this table at the end of
+`body.storage.value`.
+
+**Upsert, don't blindly append. Never write the same (Repository, Library, CVE) twice.** Match
+each library from this run's triage against existing `<tr>` rows by **(Repository, Library)**:
+
+- **Match found** → update that row **in place**: union this run's CVEs into its existing
+  `Vulnerability` cell (add any newly-seen CVE for this library; a CVE that recurs unfixed is
+  simply already there — don't duplicate it), and refresh `Fixed version`, `Severity`, `Reason`,
+  and `Date` from this run's data — `Severity` is always overwritten with the current Mend value,
+  even if an operator had hand-filled it earlier. Leave every other existing row untouched.
+- **No match** → append a new `<tr>`.
+- **The rule this exists for:** if a run finds the same library still can't be fixed, that is a
+  match — update the existing row's `Date`, do **not** add a second row for it. A brand-new CVE
+  against a library that's already on the page also does **not** get its own row — it's added to
+  that library's existing `Vulnerability` cell instead.
+- A library that's since cleared (fixed, or no longer flagged by Mend) is **not** removed
+  automatically by this step — see [Gotchas](#gotchas) on manual cleanup.
+
+This keeps the page at one row per problem library instead of growing a duplicate per run — the
+point is a manager can scan it and see current state, not a run-by-run log (the per-run PR/summary
+table already serves that audit purpose elsewhere).
 
 | Column | Source |
 |--------|--------|
 | Repository | target `repo` (short name, e.g. `a.blazemeter.com`) |
-| Vulnerability | `vulnerability.name` (CVE) + `library.name`, e.g. `CVE-2026-2391 (qs)` |
-| Version | `library.version` — the vulnerable version found |
-| Fix version needed | `fixResolutionText` / `topFix` — the version Mend says resolves it |
-| Reason | why it wasn't fixed — breaking major deferred, Jenkins red after 3 attempts, out-of-recipe ecosystem, out-of-scope severity, `pending Mend rescan`, etc. Same substance as the step-10 Notes column, one line. |
-| Date of run | today's date, `YYYY-MM-DD` |
-
-**Never delete or rewrite existing `<tr>` rows** — only add new ones. This page is a running log
-across every run and every component.
+| Library | the **primary/direct** library per the golden rule (see above) — not a transitive one |
+| Current version | `library.version` — the vulnerable version found |
+| Fixed version | `fixResolutionText` / `topFix` — the version Mend says resolves it (if any; blank when no fix version exists upstream) |
+| Severity | `cvss3_severity` if present, else `severity` (see the **mend** skill) — uppercase, e.g. `HIGH`. Always set/overwritten from this run's data, on both a new row and an upsert to an existing one — including replacing an operator's hand-filled value, since Mend's own severity is the source of truth once the automated run has it. |
+| Vulnerability | the CVE id, as a link: `<a href="https://nvd.nist.gov/vuln/detail/<CVE-ID>"><CVE-ID></a>`. Multiple CVEs against the same library → comma-separate links in **one** cell — union new CVEs into the existing cell on an upsert, never a separate row per CVE. A library alert with no assigned CVE → literal text `no CVE assigned` (no link). |
+| Reason | why it can't be fixed — breaking major version required, or no fix version available upstream, or out-of-recipe ecosystem. One line, specific (e.g. "Jackson 3.x required, breaking major incompatible with Spring Boot 3.5 BOM"). |
+| Date | today's date, `YYYY-MM-DD` — the date **last confirmed still unfixed**, not first-seen |
 
 ### 3. PUT the updated page
 
@@ -85,7 +120,7 @@ curl -s -X PUT -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
     "title": "'"${PAGE_TITLE}"'",
     "spaceId": "'"${SPACE_ID}"'",
     "body": { "representation": "storage", "value": "'"${NEW_BODY_ESCAPED}"'" },
-    "version": { "number": '"${NEW_VERSION}"', "message": "mend-blz: append unfixed-alerts report" }
+    "version": { "number": '"${NEW_VERSION}"', "message": "mend-blz: upsert unfixed-library report" }
   }'
 ```
 
@@ -95,11 +130,16 @@ retry once before giving up).
 
 ## When to run this step
 
-- Runs at the **end of every** `mend-blz` invocation that reached step 1's triage, whether the run
-  finished cleanly, stopped on a red Jenkins build, or found nothing in scope — as long as there is
-  at least one alert to report as unfixed. A "no in-scope alerts at all" run has nothing to append;
-  skip silently.
-- Skipped entirely if the `noconfluence` flag is set.
+- Runs right after the Jenkins gate (step 6), **before** opening the PR or creating the Jira
+  ticket — not at the end. Reason: the Jira ticket's description links back to this page when
+  there are unfixable libraries, so the page must already reflect this run's rows by the time that
+  ticket is created.
+- Runs for every `mend-blz` invocation that reached step 1's triage, whether the run finished
+  cleanly, stopped on a red Jenkins build, or found nothing in scope — as long as there is at
+  least one library from this run that qualifies (see "What belongs on this page"). Nothing
+  qualifying → skip silently, no write at all.
+- Skipped entirely if the `noconfluence` flag is set — in which case the Jira ticket's description
+  also omits the Confluence link.
 
 ## Gotchas
 
@@ -110,3 +150,11 @@ retry once before giving up).
   the latest body before retrying — don't just bump the version number blindly.
 - **Escaping.** The body value is a JSON string containing HTML — escape quotes/newlines correctly:
   actually build the JSON payload with a real JSON encoder (e.g. Python's `json.dumps`), don't hand-quote it in bash.
+- **Manual cleanup, for now.** This step does not delete rows for libraries that have since been
+  fixed — the page owner removes those by hand. Don't add auto-removal logic without confirming
+  the "now fixed" signal is reliable (a cleared Mend alert can also mean "pending rescan," not
+  "actually fixed") — that's exactly why this note exists.
+- **Migrating an older page.** A page still on the previous 6-column schema (`Repository |
+  Vulnerability | Version | Fix version needed | Reason | Date of run`, one row per run) needs a
+  one-time manual restructure to the 8-column schema above — that's a one-off cleanup, not
+  something this step does automatically.
