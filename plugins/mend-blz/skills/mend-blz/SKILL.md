@@ -14,7 +14,7 @@ composer — the reusable knowledge lives in five skills it drives:
 | Apply the fix (golden rule, advisory cross-check, defer majors, per-stack recipe, local build+test) | **dep-remediation** |
 | Trigger the branch build with `PUSH_TO_GCR=true` + `PERFORM_WHITESOURCE_SCAN=true` and gate on green | **jenkins** |
 | Dated branch, commit/push, open PR, tag PR with the ticket id | **github** |
-| Report unfixed alerts to the Confluence tracking page | this skill (see [references/mend-confluence-report.md](references/mend-confluence-report.md)) |
+| Upsert currently-unfixable libraries to the Confluence tracking page | this skill (see [references/mend-confluence-report.md](references/mend-confluence-report.md)) |
 | Create the MOB ticket (In Review, assignee = owner) — this skill supplies the ticket summary and, if there were deferred alerts, links back to the Confluence page above | **jira** |
 
 These auto-load alongside this recipe; defer to them for the "how," and follow the order/gates below.
@@ -61,14 +61,17 @@ Order: **alerts → branch → fix → local compile+unit-test → push → Jenk
    but still do step 7) + Notes. Expect **two builds** after the push: the branch's own
    auto-trigger (webhook/branch-indexing, default params) plus this explicit parameterized one —
    gate on the **explicit** one, not the auto-triggered one.
-7. **Report unfixed alerts to Confluence** — every alert from step 1's triage that did **not** end
-   up fixed (deferred, failed the build/Jenkins gate, out-of-recipe ecosystem, out-of-scope, or
-   `pending Mend rescan`) gets one row appended to the tracking table on the
+7. **Upsert currently-unfixable libraries to Confluence** — a manager-facing quick view, not a
+   run log: only libraries genuinely un-fixable right now (breaking major required, no fix version
+   upstream, or out-of-recipe ecosystem) get a row on the
    [Mend vulns](https://perforce.atlassian.net/wiki/spaces/BLZRD/pages/3332964371/Mend+vuls)
-   Confluence page. **Never remove or overwrite existing rows** — this table accumulates across
-   runs. See [references/mend-confluence-report.md](references/mend-confluence-report.md) for the
-   exact API calls and row format. Runs even when step 6 stopped early on a red build — it's the
-   audit trail of what's still outstanding. Skip silently if nothing is unfixed/deferred.
+   Confluence page — **excluding** `pending Mend rescan` (already fixed, just waiting on Mend) and
+   out-of-scope-severity (not attempted, not "can't fix") alerts. One row per (repo, library,
+   vulnerability) — update it in place on a repeat sighting rather than adding a duplicate, and
+   report the **primary/direct** library per the golden rule, never a transitive one. See
+   [references/mend-confluence-report.md](references/mend-confluence-report.md) for the exact API
+   calls, upsert matching, and column schema. Runs even when step 6 stopped early on a red build.
+   Skip silently if nothing from this run qualifies.
 8. **Open the PR** into `integration_branch` — via **github**.
 9. **Create the MOB ticket** (In Review, assignee = owner) unless `nojira` — via **jira**, passing
    the summary `Fix Mend vulnerabilities <repository name>` (jira owns project/board/fields/
