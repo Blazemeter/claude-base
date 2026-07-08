@@ -28,7 +28,14 @@ not fixed here.
 # Fix recipe by stack
 
 ## `php-composer`
-- Bump the **direct `require`** in `composer.json` (incl. the direct dep that pulls a vulnerable transitive, e.g. bump `guzzle` to pull a fixed `psr7`) → `composer update <vendor/pkg> --with-dependencies` → commit `composer.lock`.
+- Bump the **direct `require`** in `composer.json` (incl. the direct dep that pulls a vulnerable transitive, e.g. bump `guzzle` to pull a fixed `psr7`) → `composer update <vendor/pkg> --with-dependencies --ignore-platform-reqs` → commit `composer.lock`.
+- **Always pass `--ignore-platform-reqs`** on the update. The sandbox resolving/locking versions
+  here won't have every runtime PHP extension the app loads in production (e.g. `ext-mongodb`,
+  `ext-grpc`, `ext-zstd`) — that's fine, since this step is dependency-graph math, not execution.
+  It doesn't change which versions get resolved, only whether the solver requires the extension to
+  be *present in this sandbox* to do the math. Real runtime correctness is still fully verified by
+  `make test-docker-cov` below (which builds the repo's own Dockerfile, with the real extensions)
+  and the Jenkins CI gate — neither is affected by this flag.
 - **Cross-check:** `composer audit` (Mend's suggestion may be under a Packagist advisory).
 - **Local build + test (pre-push):** `make phpstan` (static) + `make test-docker-cov` (the dockerized unit suite CI runs — needs Docker).
 - **Internal forks** (`mongator`, `mondator`, `php-resque-ex`, `php-resque-ex-scheduler`, `PHP-Multivariate-Regression`, `Restler`, `mandrill-api-php`) resolve from `github.com/Blazemeter` git `repositories`, not Packagist — a CVE there is fixed **upstream in that repo + a ref bump**, not a registry version.
