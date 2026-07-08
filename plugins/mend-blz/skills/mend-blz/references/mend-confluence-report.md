@@ -95,11 +95,16 @@ retry once before giving up).
 
 ## When to run this step
 
-- Runs at the **end of every** `mend-blz` invocation that reached step 1's triage, whether the run
-  finished cleanly, stopped on a red Jenkins build, or found nothing in scope — as long as there is
-  at least one alert to report as unfixed. A "no in-scope alerts at all" run has nothing to append;
+- Runs right after the Jenkins gate (step 6), **before** opening the PR or creating the Jira
+  ticket — not at the end. Reason: the Jira ticket's description links back to this page when
+  there are deferred alerts (see the **jira** skill), so the page must already reflect this run's
+  rows by the time that ticket is created.
+- Runs for every `mend-blz` invocation that reached step 1's triage, whether the run finished
+  cleanly, stopped on a red Jenkins build, or found nothing in scope — as long as there is at
+  least one alert to report as unfixed. A "no in-scope alerts at all" run has nothing to append;
   skip silently.
-- Skipped entirely if the `noconfluence` flag is set.
+- Skipped entirely if the `noconfluence` flag is set — in which case the Jira ticket's description
+  also omits the Confluence link.
 
 ## Gotchas
 

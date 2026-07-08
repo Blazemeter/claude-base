@@ -25,5 +25,16 @@ Ids below are the known MOB values — treat them as config the caller may overr
   1. Dependencies fixed — one line each `library: <from> → <to>` + severity/CVE.
   2. **PR link** (the real, open PR).
   3. **Jenkins build link** — directly under the PR link.
+  4. **Confluence tracking-page link** — only when the caller reports deferred/unfixed items (e.g.
+     mend-blz's Confluence report step); omit this line entirely when there's nothing deferred or
+     the caller skipped that report. The page must already reflect the current run before this
+     ticket is created — create the ticket *after* the caller's Confluence write, not before.
 
 A `nojira` flag skips ticket create/update entirely.
+
+## Rate limits
+
+Jira Cloud returns `429` under load. Back off and retry with a **bounded** policy, don't loop
+open-ended: wait ~10s, retry; if `429` again, wait ~30s, retry; if `429` again, wait ~60s, retry
+once more; still failing after that (3 retries total) → stop and report the failure via the
+caller's notes/summary mechanism rather than continuing to wait.
