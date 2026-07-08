@@ -58,7 +58,7 @@ project_dir="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null |
 cfg=""
 if [ -f "$project_dir/policy/doc-task.yaml" ]; then
   cfg="$project_dir/policy/doc-task.yaml"
-elif [ -f "${CLAUDE_PLUGIN_ROOT:-}/skills/file-doc-task/references/doc-task.config.default.yaml" ]; then
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/skills/file-doc-task/references/doc-task.config.default.yaml" ]; then
   cfg="${CLAUDE_PLUGIN_ROOT}/skills/file-doc-task/references/doc-task.config.default.yaml"
 fi
 

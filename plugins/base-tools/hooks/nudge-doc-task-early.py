@@ -12,8 +12,8 @@ PR.
 It is ADVISORY and best-effort:
   * It never blocks (always exits 0) — a nudge, not a gate.
   * PreSkill stdout is not a guaranteed context channel across harness versions,
-    so this also emits the documented `hookSpecificOutput.additionalContext`
-    JSON shape (honoured where supported) and logs the nudge for telemetry. The
+    so this emits the documented `hookSpecificOutput.additionalContext` JSON
+    shape (honoured where supported) and logs the nudge for telemetry. The
     always-on SessionStart primer carries the same instruction as the reliable
     fallback, so the reminder is never lost even if this channel is ignored.
 
@@ -81,8 +81,9 @@ def main() -> None:
     except OSError:
         pass
 
-    # Surface the nudge. Emit both the documented additionalContext JSON shape
-    # (honoured where supported) and a plain stdout line as a fallback.
+    # Surface the nudge via the documented additionalContext JSON shape
+    # (honoured where supported); the SessionStart primer is the reliable
+    # fallback if this channel is ignored.
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": "PreSkill",
