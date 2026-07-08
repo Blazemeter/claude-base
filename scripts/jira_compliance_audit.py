@@ -11,14 +11,14 @@ Two checks:
 
   lifecycle  (rule #5, PR-triggered)
     Given the JIRA key referenced by an AI-labeled PR, verify the issue
-    reached "In Review" or beyond AND carries the AI_generated label (rule #2
+    reached "In Review" or beyond AND carries the ai_assisted label (rule #2
     on the linked issue). Fails if the PR opened without the ticket being
     transitioned, which is exactly the metrics-blind case rule #5 exists to
     prevent.
 
   label  (rule #2, scheduled/nightly)
     Run the configured `label_audit_jql` to find issues created by a Claude
-    tool path that are missing the AI_generated label, and report them.
+    tool path that are missing the ai_assisted label, and report them.
     Skipped (not failed) while the JQL is the unset placeholder.
 
 Connection comes from the environment (never from a file):
@@ -61,7 +61,7 @@ ALL_ZERO_RE = re.compile(r"^[A-Z][A-Z0-9_]+-0+$")
 UNSET = "__UNSET__"
 
 DEFAULTS = {
-    "ai_label": "AI_generated",
+    "ai_label": "ai_assisted",
     "label_audit_jql": UNSET,
     "label_audit_max_results": 100,
     "review_or_beyond_statuses": ["In Review", "Testing", "Accepted", "Closed"],

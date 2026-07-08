@@ -22,8 +22,8 @@ Claude-driven action; the full text and rationale live in STANDARDS.md.
 1. **JIRA ID** — every branch you create and every PR you open must carry a real,
    non-zero JIRA key (`[A-Z][A-Z0-9_]+-[0-9]+`). No placeholders (`MOB-00000`).
    Claude-tooling work goes under the AIDLC Epic MOB-50371.
-2. **AI_generated label** — every JIRA issue created via Claude must carry the
-   `AI_generated` label (pass it in `additional_fields.labels`).
+2. **ai_assisted label** — every JIRA issue created via Claude must carry the
+   `ai_assisted` label (pass it in `additional_fields.labels`).
 3. **Claude attribution** — every commit you author includes a
    `Co-Authored-By: Claude` trailer.
 4. **Doc task** — feature / user-facing work must assess customer-doc impact and,

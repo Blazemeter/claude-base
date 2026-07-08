@@ -10,9 +10,9 @@ name: STANDARDS — JIRA compliance audit
 # Two jobs:
 #   lifecycle-audit  (rule #5 + rule #2 on the linked issue) — on every PR
 #                    labeled `ai-generated`: the referenced JIRA issue must
-#                    carry AI_generated AND have reached In Review or beyond.
+#                    carry ai_assisted AND have reached In Review or beyond.
 #   label-audit      (rule #2) — nightly sweep for Claude-created issues missing
-#                    the AI_generated label (skipped until label_audit_jql is set
+#                    the ai_assisted label (skipped until label_audit_jql is set
 #                    in policy/compliance-audit.yaml).
 #
 # SAFE BY DEFAULT: when the JIRA_* secrets are absent both jobs skip with a
@@ -88,7 +88,7 @@ jobs:
             --branch "$BRANCH" --pr-title "$PR_TITLE" --pr-body "$PR_BODY"
 
   label-audit:
-    name: Rule #2 — AI_generated label sweep (nightly)
+    name: Rule #2 — ai_assisted label sweep (nightly)
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
@@ -111,7 +111,7 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Sweep for missing AI_generated labels
+      - name: Sweep for missing ai_assisted labels
         if: steps.guard.outputs.skip != 'true'
         env:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}

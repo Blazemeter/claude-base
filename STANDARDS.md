@@ -48,11 +48,14 @@ which is exactly how a month of AIDLC PRs ended up untraceable.
 - Client: `plugins/base-tools/hooks/enforce-jira-id.sh` (PreToolUse on `Bash`)
 - Server: `.github/workflows/jira-id-lint.yml` (required status check)
 
-## 2. `AI_generated` label on JIRA issues created via Claude
+## 2. `ai_assisted` label on JIRA issues created via Claude
 
 Every JIRA issue created by an LLM tool path must carry the label
-`AI_generated`. This is the audit hook — without it we can't separate
-Claude-filed tickets from human-filed ones.
+`ai_assisted`. This is the audit hook — without it we can't separate
+Claude-filed tickets from human-filed ones. (Prior to MOB-51692 this rule
+used `AI_generated` as the label name; it was unified with the `ai_assisted`
+metrics tag several consuming teams were already applying alongside it, so
+one label now serves both purposes.)
 
 **Why**: post-hoc audit of LLM-filed work; lets the JIRA Ops team measure
 volume and quality of AI-filed tickets, and quickly reverse a bad batch.
@@ -120,7 +123,7 @@ track AI-originated dev work that has downstream doc impact.
 **Enforced by**:
 - Client (skill): the `file-doc-task` skill in `plugins/base-tools/` (the shared,
   idempotent mechanism — pipelines call it early to draft and at finalize to
-  reconcile, or just once at finalize). The skill includes the `AI_generated`
+  reconcile, or just once at finalize). The skill includes the `ai_assisted`
   label (rule #2) in the create call up front; the rule-2 hook blocks the
   `createJiraIssue` call if it's missing. At every terminal outcome it records a
   decision marker at `.claude/doc-task-decisions/<key>.json`.
@@ -195,7 +198,7 @@ to exactly the work this marketplace exists to track.
   org; a stage left unset is skipped, status untouched).
 - Server: `scripts/jira_compliance_audit.py lifecycle`, run by
   `.github/workflows/jira-compliance-audit.yml` on every PR labeled
-  `ai-generated`, verifies the referenced JIRA issue carries `AI_generated`
+  `ai-generated`, verifies the referenced JIRA issue carries `ai_assisted`
   (rule #2) **and** has reached `In Review` or beyond (rule #5) — catching
   workflows that opened a PR without transitioning the ticket. Safe by default
   (skips unless the `JIRA_*` CI secrets are set); promote it to a required

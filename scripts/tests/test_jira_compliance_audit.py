@@ -79,8 +79,8 @@ class PredicateTests(unittest.TestCase):
         self.cfg = dict(audit.DEFAULTS)
 
     def test_label_presence(self):
-        self.assertTrue(audit.issue_has_label(issue("M-1", "Open", "new", ["AI_generated"]), "AI_generated"))
-        self.assertFalse(audit.issue_has_label(issue("M-1", "Open", "new", []), "AI_generated"))
+        self.assertTrue(audit.issue_has_label(issue("M-1", "Open", "new", ["ai_assisted"]), "ai_assisted"))
+        self.assertFalse(audit.issue_has_label(issue("M-1", "Open", "new", []), "ai_assisted"))
 
     def test_reached_review_by_name(self):
         self.assertTrue(audit.issue_reached_review(issue("M-1", "In Review", "indeterminate", []), self.cfg))
@@ -103,7 +103,7 @@ class LifecycleAuditTests(unittest.TestCase):
         self.cfg = dict(audit.DEFAULTS)
 
     def test_compliant_issue_no_violations(self):
-        c = client_with({"/issue/MOB-1": (200, issue("MOB-1", "In Review", "indeterminate", ["AI_generated"]))})
+        c = client_with({"/issue/MOB-1": (200, issue("MOB-1", "In Review", "indeterminate", ["ai_assisted"]))})
         self.assertEqual(audit.audit_lifecycle(c, "MOB-1", self.cfg), [])
 
     def test_missing_label_flagged(self):
@@ -112,7 +112,7 @@ class LifecycleAuditTests(unittest.TestCase):
         self.assertTrue(any("rule #2" in x for x in v), v)
 
     def test_not_reached_review_flagged(self):
-        c = client_with({"/issue/MOB-3": (200, issue("MOB-3", "Open", "new", ["AI_generated"]))})
+        c = client_with({"/issue/MOB-3": (200, issue("MOB-3", "Open", "new", ["ai_assisted"]))})
         v = audit.audit_lifecycle(c, "MOB-3", self.cfg)
         self.assertTrue(any("rule #5" in x for x in v), v)
 
@@ -141,7 +141,7 @@ class LabelAuditTests(unittest.TestCase):
         cfg = dict(audit.DEFAULTS, label_audit_jql="reporter = claude")
         c = client_with({"/search/jql": (200, {"issues": [
             issue("MOB-10", "Open", "new", []),
-            issue("MOB-11", "Open", "new", ["AI_generated"]),
+            issue("MOB-11", "Open", "new", ["ai_assisted"]),
             issue("MOB-12", "Open", "new", []),
         ]})})
         status, missing = audit.audit_labels(c, cfg)
@@ -151,7 +151,7 @@ class LabelAuditTests(unittest.TestCase):
     def test_ok_when_all_labeled(self):
         cfg = dict(audit.DEFAULTS, label_audit_jql="reporter = claude")
         c = client_with({"/search/jql": (200, {"issues": [
-            issue("MOB-10", "Open", "new", ["AI_generated"]),
+            issue("MOB-10", "Open", "new", ["ai_assisted"]),
         ]})})
         status, missing = audit.audit_labels(c, cfg)
         self.assertEqual(status, "ok")
@@ -164,7 +164,7 @@ class ConfigTests(unittest.TestCase):
     def test_missing_file_uses_defaults(self):
         with tempfile.TemporaryDirectory() as td:
             cfg = audit.load_config(Path(td))
-            self.assertEqual(cfg["ai_label"], "AI_generated")
+            self.assertEqual(cfg["ai_label"], "ai_assisted")
             self.assertEqual(cfg["label_audit_jql"], audit.UNSET)
 
     def test_override_merges_over_defaults(self):
@@ -219,7 +219,7 @@ class ClientTests(unittest.TestCase):
             captured["url"] = url
             return 200, json.dumps({"issues": []}).encode()
         c = audit.JiraClient("https://j.example.com", "a@b.com", "t", opener=opener)
-        c.search("project = MOB AND labels != AI_generated", 50)
+        c.search("project = MOB AND labels != ai_assisted", 50)
         self.assertIn("/rest/api/3/search/jql?jql=", captured["url"])
         self.assertNotIn(" ", captured["url"])  # spaces must be percent-encoded
 
@@ -253,7 +253,7 @@ class CLITests(unittest.TestCase):
             audit._client_from_env = orig
 
     def test_lifecycle_compliant_returns_0(self):
-        c = client_with({"/issue/MOB-1": (200, issue("MOB-1", "In Review", "indeterminate", ["AI_generated"]))})
+        c = client_with({"/issue/MOB-1": (200, issue("MOB-1", "In Review", "indeterminate", ["ai_assisted"]))})
         self.assertEqual(self._run(["lifecycle", "--branch", "MOB-1-foo"], c), 0)
 
     def test_lifecycle_violation_returns_1(self):
