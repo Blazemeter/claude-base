@@ -66,9 +66,11 @@ Order: **alerts → branch → fix → local compile+unit-test → push → Jenk
    upstream, or out-of-recipe ecosystem) get a row on the
    [Mend vulns](https://perforce.atlassian.net/wiki/spaces/BLZRD/pages/3332964371/Mend+vuls)
    Confluence page — **excluding** `pending Mend rescan` (already fixed, just waiting on Mend) and
-   out-of-scope-severity (not attempted, not "can't fix") alerts. One row per (repo, library,
-   vulnerability) — update it in place on a repeat sighting rather than adding a duplicate, and
-   report the **primary/direct** library per the golden rule, never a transitive one. See
+   out-of-scope-severity (not attempted, not "can't fix") alerts. One row per (repo, library) —
+   never write the same library+CVE twice: a repeat sighting of an already-listed CVE updates that
+   row's Date in place, and a new CVE against an already-listed library is added into that same
+   row rather than getting its own. Report the **primary/direct** library per the golden rule,
+   never a transitive one. See
    [references/mend-confluence-report.md](references/mend-confluence-report.md) for the exact API
    calls, upsert matching, and column schema. Runs even when step 6 stopped early on a red build.
    Skip silently if nothing from this run qualifies.

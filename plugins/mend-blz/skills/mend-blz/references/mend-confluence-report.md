@@ -77,19 +77,25 @@ The page body is Confluence **storage format** (XHTML). Table schema:
 If this is the first-ever write (no table present), append this table at the end of
 `body.storage.value`.
 
-**Upsert, don't blindly append.** Match each library from this run's triage against existing
-`<tr>` rows by **(Repository, Library, Vulnerability)**:
+**Upsert, don't blindly append. Never write the same (Repository, Library, CVE) twice.** Match
+each library from this run's triage against existing `<tr>` rows by **(Repository, Library)**:
 
-- **Match found** → update that row's `Fixed version`, `Severity`, `Reason`, and `Date` in place
-  (the library may now resolve to a different fix version, or the reason may have changed).
-  Leave every other existing row untouched.
+- **Match found** → update that row **in place**: union this run's CVEs into its existing
+  `Vulnerability` cell (add any newly-seen CVE for this library; a CVE that recurs unfixed is
+  simply already there — don't duplicate it), and refresh `Fixed version`, `Reason`, and `Date`.
+  Leave `Severity` untouched if already set by hand — only fill it in if the cell is currently
+  empty/`TBD`. Leave every other existing row untouched.
 - **No match** → append a new `<tr>`.
+- **The rule this exists for:** if a run finds the same library still can't be fixed, that is a
+  match — update the existing row's `Date`, do **not** add a second row for it. A brand-new CVE
+  against a library that's already on the page also does **not** get its own row — it's added to
+  that library's existing `Vulnerability` cell instead.
 - A library that's since cleared (fixed, or no longer flagged by Mend) is **not** removed
   automatically by this step — see [Gotchas](#gotchas) on manual cleanup.
 
-This keeps the page at one row per open problem instead of growing a duplicate per run — the point
-is a manager can scan it and see current state, not a run-by-run log (the per-run PR/summary table
-already serves that audit purpose elsewhere).
+This keeps the page at one row per problem library instead of growing a duplicate per run — the
+point is a manager can scan it and see current state, not a run-by-run log (the per-run PR/summary
+table already serves that audit purpose elsewhere).
 
 | Column | Source |
 |--------|--------|
@@ -97,8 +103,8 @@ already serves that audit purpose elsewhere).
 | Library | the **primary/direct** library per the golden rule (see above) — not a transitive one |
 | Current version | `library.version` — the vulnerable version found |
 | Fixed version | `fixResolutionText` / `topFix` — the version Mend says resolves it (if any; blank when no fix version exists upstream) |
-| Severity | `cvss3_severity` if present, else `severity` (see the **mend** skill) — uppercase, e.g. `HIGH` |
-| Vulnerability | the CVE id, as a link: `<a href="https://nvd.nist.gov/vuln/detail/<CVE-ID>"><CVE-ID></a>`. Multiple CVEs against the same library → comma-separate links in one cell, don't create multiple rows for the same library. |
+| Severity | `cvss3_severity` if present, else `severity` (see the **mend** skill) — uppercase, e.g. `HIGH`. On an upsert to an **existing** row, only set this if the cell is currently empty/`TBD` — a value already there may have been filled in by hand; don't overwrite it. |
+| Vulnerability | the CVE id, as a link: `<a href="https://nvd.nist.gov/vuln/detail/<CVE-ID>"><CVE-ID></a>`. Multiple CVEs against the same library → comma-separate links in **one** cell — union new CVEs into the existing cell on an upsert, never a separate row per CVE. A library alert with no assigned CVE → literal text `no CVE assigned` (no link). |
 | Reason | why it can't be fixed — breaking major version required, or no fix version available upstream, or out-of-recipe ecosystem. One line, specific (e.g. "Jackson 3.x required, breaking major incompatible with Spring Boot 3.5 BOM"). |
 | Date | today's date, `YYYY-MM-DD` — the date **last confirmed still unfixed**, not first-seen |
 
