@@ -82,9 +82,9 @@ each library from this run's triage against existing `<tr>` rows by **(Repositor
 
 - **Match found** → update that row **in place**: union this run's CVEs into its existing
   `Vulnerability` cell (add any newly-seen CVE for this library; a CVE that recurs unfixed is
-  simply already there — don't duplicate it), and refresh `Fixed version`, `Reason`, and `Date`.
-  Leave `Severity` untouched if already set by hand — only fill it in if the cell is currently
-  empty/`TBD`. Leave every other existing row untouched.
+  simply already there — don't duplicate it), and refresh `Fixed version`, `Severity`, `Reason`,
+  and `Date` from this run's data — `Severity` is always overwritten with the current Mend value,
+  even if an operator had hand-filled it earlier. Leave every other existing row untouched.
 - **No match** → append a new `<tr>`.
 - **The rule this exists for:** if a run finds the same library still can't be fixed, that is a
   match — update the existing row's `Date`, do **not** add a second row for it. A brand-new CVE
@@ -103,7 +103,7 @@ table already serves that audit purpose elsewhere).
 | Library | the **primary/direct** library per the golden rule (see above) — not a transitive one |
 | Current version | `library.version` — the vulnerable version found |
 | Fixed version | `fixResolutionText` / `topFix` — the version Mend says resolves it (if any; blank when no fix version exists upstream) |
-| Severity | `cvss3_severity` if present, else `severity` (see the **mend** skill) — uppercase, e.g. `HIGH`. On an upsert to an **existing** row, only set this if the cell is currently empty/`TBD` — a value already there may have been filled in by hand; don't overwrite it. |
+| Severity | `cvss3_severity` if present, else `severity` (see the **mend** skill) — uppercase, e.g. `HIGH`. Always set/overwritten from this run's data, on both a new row and an upsert to an existing one — including replacing an operator's hand-filled value, since Mend's own severity is the source of truth once the automated run has it. |
 | Vulnerability | the CVE id, as a link: `<a href="https://nvd.nist.gov/vuln/detail/<CVE-ID>"><CVE-ID></a>`. Multiple CVEs against the same library → comma-separate links in **one** cell — union new CVEs into the existing cell on an upsert, never a separate row per CVE. A library alert with no assigned CVE → literal text `no CVE assigned` (no link). |
 | Reason | why it can't be fixed — breaking major version required, or no fix version available upstream, or out-of-recipe ecosystem. One line, specific (e.g. "Jackson 3.x required, breaking major incompatible with Spring Boot 3.5 BOM"). |
 | Date | today's date, `YYYY-MM-DD` — the date **last confirmed still unfixed**, not first-seen |
