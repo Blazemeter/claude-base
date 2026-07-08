@@ -48,16 +48,16 @@
     {
       "name": "jira",
       "source": "./plugins/jira",
-      "description": "Create/transition a Jira ticket — generic Jira Cloud REST mechanics; project/board/fields/assignee/status are caller-supplied config.",
-      "version": "0.2.0",
-      "keywords": ["jira", "atlassian", "ticket"],
+      "description": "Create/transition Blazemeter MOB Jira tickets — board 5348, Task, Product/Scrum-Team/Sprint fields, assignee = repo owner, status In Review. Ticket summary/name is caller-supplied.",
+      "version": "0.2.1",
+      "keywords": ["jira", "mob", "atlassian", "ticket"],
       "category": "development"
     },
     {
       "name": "mend-blz",
       "source": "./plugins/mend-blz",
       "description": "End-to-end Mend remediation recipe — composes mend + dep-remediation + jenkins + github + jira into one loop (alerts → fix → Jenkins green → PR → Jira → Confluence report), registry-driven via services.json.",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "keywords": ["mend", "whitesource", "security", "cve", "vulnerabilities", "blazemeter", "recipe"],
       "category": "development"
     }

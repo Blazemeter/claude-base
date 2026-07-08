@@ -14,7 +14,7 @@ composer — the reusable knowledge lives in five skills it drives:
 | Apply the fix (golden rule, advisory cross-check, defer majors, per-stack recipe, local build+test) | **dep-remediation** |
 | Trigger the branch build with `PUSH_TO_GCR=true` and gate on green | **jenkins** |
 | Dated branch, commit/push, open PR, tag PR with the ticket id | **github** |
-| Create the MOB ticket (In Review, assignee = owner) — this skill supplies the [MOB config](#mob-jira-config) | **jira** |
+| Create the MOB ticket (In Review, assignee = owner) — this skill supplies the ticket summary | **jira** |
 | Report unfixed alerts to the Confluence tracking page | this skill (see [references/mend-confluence-report.md](references/mend-confluence-report.md)) |
 
 These auto-load alongside this recipe; defer to them for the "how," and follow the order/gates below.
@@ -47,28 +47,6 @@ orchestrator's `config/services.json`) a per-component entry with these fields:
 | `stack` | drives the fix recipe + manifest (`php-composer`→`composer.json`, `gradle-springboot`→`build.gradle.kts`, `maven-springboot`→`pom.xml`) — see **dep-remediation** |
 | `description` | human label |
 
-# MOB Jira config
-
-The **jira** skill is generic — it knows Jira Cloud REST mechanics only, not this project's
-specifics. This recipe is what supplies the concrete config for step 8, per its
-[caller config contract](../../../jira/skills/jira/SKILL.md#caller-config-contract):
-
-| Field | Value |
-|-------|-------|
-| `base_url` | `https://perforce.atlassian.net` |
-| `project_key` | `MOB` |
-| `board_id` | `5348` |
-| `issue_type_id` | `10013` (Task) |
-| `custom_fields` | Product=Blazemeter — `customfield_10350` (id `21409`); Scrum Team=Terra — `customfield_10067` (id `21406`) |
-| `sprint_field` | `customfield_10020` — active sprint of board `5348` |
-| `assignee` | the target's `owner` (component registry); fallback `tcohen` when empty — ownership is tracked via assignee since there's no GitHub reviewer |
-| `target_status` / `transition_id` | `In Review` / `61` |
-| `summary` | `Fix Mend vulnerabilities <repository name>` (the repo's short name, e.g. `Fix Mend vulnerabilities a.blazemeter.com` — not the component alias) |
-| `description_lines` | one line per dependency fixed (`library: <from> → <to>` + severity/CVE), then the PR link, then the Jenkins build link directly under it |
-| `skip` | the `nojira` flag |
-
-Treat the ids above as config this recipe owns — not as defaults baked into **jira** itself.
-
 # Fix loop
 
 Order: **alerts → branch → fix → local compile+unit-test → push → Jenkins green (GATE) → PR → Jira → tag PR with MOB id → Confluence report.** Local tests run before push (fail fast); Jenkins-green is the hard gate — nothing downstream runs until the branch build is green. The Confluence report step runs regardless of how the run ends (including a red-build stop) — it is the record of what's still outstanding.
@@ -80,8 +58,9 @@ Order: **alerts → branch → fix → local compile+unit-test → push → Jenk
 5. **Commit + push** the branch — via **github**.
 6. **Trigger the build with `PUSH_TO_GCR=true` and poll until green** — via **jenkins**. Red → fix-forward, cap **3 attempts**; still red → stop (no PR/Jira) + Notes.
 7. **Open the PR** into `integration_branch` — via **github**.
-8. **Create the MOB ticket** (In Review, assignee = owner) unless `nojira` — via **jira**, using
-   the [MOB Jira config](#mob-jira-config) above.
+8. **Create the MOB ticket** (In Review, assignee = owner) unless `nojira` — via **jira**, passing
+   the summary `Fix Mend vulnerabilities <repository name>` (jira owns project/board/fields/
+   status; this recipe only supplies the ticket's name and description content).
 9. **Tag the PR** title with the `MOB-####` id — via **github**.
 10. **Write the summary table** — one row per alert acted on:
 
@@ -113,6 +92,6 @@ Order: **alerts → branch → fix → local compile+unit-test → push → Jenk
 # References
 
 - Component registry (authoritative): `config/services.json` in **blz-claude-orchestrator**.
-- Composed skills: **mend**, **dep-remediation**, **jenkins**, **github**, **jira** (generic —
-  see [MOB Jira config](#mob-jira-config) above for the concrete values this recipe supplies).
+- Composed skills: **mend**, **dep-remediation**, **jenkins**, **github**, **jira** (this recipe
+  supplies the ticket summary/name; jira owns project MOB/board/fields/status).
 - Confluence report mechanics: [references/mend-confluence-report.md](references/mend-confluence-report.md).
