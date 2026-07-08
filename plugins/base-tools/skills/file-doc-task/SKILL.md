@@ -1,7 +1,7 @@
 ---
 name: file-doc-task
 description: File or update a documentation-planning JIRA task for a customer-facing feature, using the documentation team's standard template. Idempotent create-or-update — safe to run early (draft a DOC-ready ticket from the specs/design to guide development) and again at finalize (reconcile the description against what was actually shipped). For FEATURE or USER-FACING work the skill first asks once whether the change needs customer-facing documentation, and only creates the ticket if it does. Also use when a developer explicitly asks to "create a doc task", "file a docs ticket", "DOC-ready ticket", "update the doc task", or hand work off to the documentation team. Do NOT use for pure refactors, internal-only fixes, or build/dependency chores.
-allowed-tools: Read, Bash(gh *), mcp__claude_ai_Atlassian_Rovo__getJiraIssue, mcp__claude_ai_Atlassian_Rovo__createJiraIssue, mcp__claude_ai_Atlassian_Rovo__editJiraIssue, mcp__claude_ai_Atlassian_Rovo__createIssueLink
+allowed-tools: Read, Write, Bash(gh *), mcp__claude_ai_Atlassian_Rovo__getJiraIssue, mcp__claude_ai_Atlassian_Rovo__createJiraIssue, mcp__claude_ai_Atlassian_Rovo__editJiraIssue, mcp__claude_ai_Atlassian_Rovo__createIssueLink
 effort: medium
 ---
 
@@ -66,13 +66,23 @@ gate in the next section asks the docs question **only once** — once a ticket
 
 ## The decision gate (do this first)
 
-1. **Classify the change.** If it is not a feature or user-facing change, stop —
-   this skill does not apply.
+1. **Classify the change.** If it is not a feature or user-facing change (a pure
+   refactor, internal-only fix, test-only change, or build/dependency chore),
+   this skill does not apply — but still **record the decision as
+   `not-applicable`** (see *Record the decision* below) and stop. The marker is
+   what lets the PR gate distinguish "assessed, out of scope" from "never
+   assessed", so an out-of-scope change is not blocked at PR time.
 
 2. **Check for a prior decision** so the gate is asked only once across the
    early + finalize passes. This skill has **no Jira search/JQL tool** — only
-   `getJiraIssue`, which requires a key — so detection of an existing ticket is
+   `getJiraIssue`, which requires a key — so detection of an existing decision is
    limited to these in-tools means, in order:
+   - **A local decision marker exists** at
+     `.claude/doc-task-decisions/<engineering-key>.json` (written by a prior run
+     of this skill) → read it. If it records `filed`/`updated` with a
+     `doc_task` key, go to **Reconcile an existing ticket**. If it records
+     `not-required` or `not-applicable`, stop silently — the decision stands.
+     This is the most reliable repeat-run signal and needs no Jira call.
    - The caller passes a known doc-task key (e.g. `.sdd-meta.json`'s `doc_task`)
      → skip the question and go to **Reconcile an existing ticket** below. This
      is the reliable path; spec-driven pipelines persist the key on the early
@@ -94,9 +104,10 @@ gate in the next section asks the docs question **only once** — once a ticket
    > documentation (release note, user/admin guide, API reference)?
    > [yes / no]"
 
-   - If the answer is **no** → do not create a ticket. Record the decision in
-     the dev workflow output (e.g. "Docs: not required — confirmed by
-     <author>") and stop. Later passes see this and skip silently.
+   - If the answer is **no** → do not create a ticket. **Record the decision as
+     `not-required`** (see *Record the decision* below) and note it in the dev
+     workflow output (e.g. "Docs: not required — confirmed by <author>"), then
+     stop. Later passes and the PR gate see the marker and skip silently.
    - If **yes** → continue to **Creating the ticket**.
 
    Never decide "yes" on the developer's behalf. The whole point of the gate is
@@ -124,15 +135,25 @@ never to file a second one.
    - **Already current** → make no edit; just confirm the link.
    Never fabricate to fill a gap — unsourced fields stay as open questions under
    *Internal notes*, exactly as on create.
-4. **Report back** the ticket key, its URL, whether you updated or left it
+4. **Record the decision** as `updated` (or leave the existing marker as-is if
+   you made no edit) with the doc-task key (see *Record the decision* below).
+5. **Report back** the ticket key, its URL, whether you updated or left it
    unchanged, and any remaining open questions.
 
 ## Creating the ticket
 
-1. **Load the config** from `policy/doc-task.yaml` (project key, issue type,
-   link type, default component/assignee). If the project key is still the
-   unset placeholder, STOP and tell the developer the doc-task project must be
-   configured first — do not guess a project.
+1. **Load the config** (project key, issue type, link type, default
+   component/assignee). Resolve it in this order and use the first that exists:
+   1. `policy/doc-task.yaml` at the **consuming repo's** root — set this when you
+      install `base-tools` as a plugin into your own project (see the plugin's
+      `references/doc-task.config.default.yaml` for the template to copy).
+   2. `references/doc-task.config.default.yaml` **bundled in this skill** — the
+      fallback template shipped with the plugin; it is `__UNSET__` by design.
+
+   If the resolved `project_key` is still the unset placeholder (`__UNSET__`),
+   **STOP** and tell the developer the doc-task project must be configured first
+   (copy the template to `policy/doc-task.yaml` and set the real key) — do not
+   guess a project.
 
 2. **Load the template** from `references/doc-task-template.md` and build the
    description using **exactly** that structure and authoring rules. The rules
@@ -171,9 +192,52 @@ never to file a second one.
 5. **Link it** to the engineering ticket via `createIssueLink` using the link
    type in `policy/doc-task.yaml` (default: `relates to`).
 
-6. **Report back** the new doc-task key, its URL, and a one-line list of any
+6. **Record the decision** as `filed` with the new doc-task key (see *Record the
+   decision* below), so repeat runs reconcile instead of double-filing and the
+   PR gate passes.
+
+7. **Report back** the new doc-task key, its URL, and a one-line list of any
    fields left as open questions so the developer/docs team knows what's
    missing.
+
+## Record the decision (required)
+
+Every terminal outcome of this skill — `filed`, `updated`, `not-required`, or
+`not-applicable` — must be written to a **local decision marker** keyed by the
+engineering ticket. This is what makes the skill idempotent *and* what the
+client-side PR gate (`require-doc-task-decision.sh`) checks before allowing
+`gh pr create`: no marker for the branch's JIRA key → the PR is blocked.
+
+Write the marker with the `Write` tool to:
+
+```
+.claude/doc-task-decisions/<engineering-key>.json
+```
+
+(relative to the repo root — the same working tree the PR is opened from).
+Content:
+
+```json
+{
+  "jira": "<engineering-key>",
+  "decision": "filed | updated | not-required | not-applicable",
+  "doc_task": "<DOC-key or null>",
+  "by": "<author who confirmed, or the pipeline name>",
+  "ts": "<ISO-8601 timestamp>"
+}
+```
+
+Rules:
+
+- Write it at **every** terminal outcome, including out-of-scope
+  (`not-applicable`) and human-declined (`not-required`) — those are valid
+  complete decisions and the gate must see them.
+- The filename key is the **engineering** ticket (the branch's key), not the
+  doc-task key — that is what the PR gate derives from the branch name.
+- If a marker already exists and your outcome hasn't changed (e.g. reconcile
+  found the ticket already current), leave it as-is.
+- This marker is a local decision record, not source of truth for the ticket
+  itself — the JIRA ticket remains authoritative. It is git-ignored by default.
 
 ## Output
 
@@ -214,5 +278,11 @@ Doc task: not required — confirmed by <author> for <MOB-KEY>.
 ## Related
 
 - `references/doc-task-template.md` — the exact ticket structure and rules.
+- `references/doc-task.config.default.yaml` — bundled config template; copy to
+  `policy/doc-task.yaml` at your repo root and set the real project key.
 - `policy/doc-task.yaml` — deployment-specific JIRA project/issue-type config.
+- `hooks/require-doc-task-decision.sh` — the PreToolUse PR gate that blocks
+  `gh pr create` until this skill has recorded a decision marker.
+- `.claude/doc-task-decisions/<key>.json` — the per-ticket decision marker this
+  skill writes and the gate reads.
 - STANDARDS.md rule #4 — the rule this skill enforces.
