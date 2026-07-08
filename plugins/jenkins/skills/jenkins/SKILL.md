@@ -1,6 +1,6 @@
 ---
 name: jenkins
-description: Trigger and gate on a Blazemeter blazect Jenkins multibranch build — POST buildWithParameters with PUSH_TO_GCR=true, poll the branch's lastBuild until green (unit-test/prisms/mend stages), fix-forward on red, and never gate on the slow API_TESTS-CI suite. Load when a flow needs to run or wait on a Blazemeter CI build.
+description: Trigger and gate on a Blazemeter blazect Jenkins multibranch build — POST buildWithParameters with PUSH_TO_GCR=true and PERFORM_WHITESOURCE_SCAN=true, poll the branch's lastBuild until green (unit-test/prisms/mend stages), fix-forward on red, and never gate on the slow API_TESTS-CI suite. Load when a flow needs to run or wait on a Blazemeter CI build.
 ---
 
 # Blazemeter CI gate
@@ -9,17 +9,20 @@ Server: `https://blazect-jenkins.blazemeter.com`. Auth with `JENKINS_USER` + `JE
 Each component has a **multibranch** folder (e.g. `BACKEND-CI`, `DAGGER-CI`, `SEARCH-CI`); a branch
 build lives at `/job/<folder>/job/<branch>/`.
 
-## Trigger with PUSH_TO_GCR
+## Trigger with PUSH_TO_GCR + PERFORM_WHITESOURCE_SCAN
 
 After pushing the branch, kick a parameterized build so the remediated image publishes to GCR
-(`gcr.io/verdant-bulwark-278`; image libs `bm-backend`, `bm-dagger`, …):
+(`gcr.io/verdant-bulwark-278`; image libs `bm-backend`, `bm-dagger`, …) and the build re-scans the
+branch with Mend/WhiteSource (so fixed alerts show as resolved on the next **mend** triage instead
+of lingering as stale/open):
 
 ```
-POST https://blazect-jenkins.blazemeter.com/job/<folder>/job/<branch>/buildWithParameters?PUSH_TO_GCR=true
+POST https://blazect-jenkins.blazemeter.com/job/<folder>/job/<branch>/buildWithParameters?PUSH_TO_GCR=true&PERFORM_WHITESOURCE_SCAN=true
 ```
 
 - **`PUSH_TO_GCR`** (boolean, default `False`) is the **"push to GCR" checkbox** — always check it, on **every** component's job (BACKEND-CI, DAGGER-CI, SEARCH-CI, and any repo added later).
-- Leave the other boolean params (`RUN_UNIT_TESTS`, `PERFORM_*_SCAN`, `FAIL_JOB_ON_SCAN_FAILURES`, `NO_CACHE_FLAG`, `UPDATE_VERSION`) at their defaults.
+- **`PERFORM_WHITESOURCE_SCAN`** (boolean, default `False`) triggers the Mend/WhiteSource scan stage — always check it too, same components, so the branch's Mend project reflects the fix.
+- Leave the other boolean params (`RUN_UNIT_TESTS`, other `PERFORM_*_SCAN` flags, `FAIL_JOB_ON_SCAN_FAILURES`, `NO_CACHE_FLAG`, `UPDATE_VERSION`) at their defaults.
 
 ## Gate on green
 

@@ -1,6 +1,6 @@
 ---
 name: jira
-description: Create and transition Blazemeter MOB Jira tickets — project MOB / board 5348, type Task, custom fields (Product=Blazemeter, Scrum Team=Terra, active sprint), assignee resolved from the repo owner display name, status transitioned to In Review, with a structured description linking the PR and Jenkins build. Load when a flow needs to file or update a MOB ticket.
+description: Create and transition Blazemeter MOB Jira tickets — project MOB / board 5348, type Task, custom fields (Product=Blazemeter, Scrum Team=Terra, active sprint), assignee resolved from the repo owner display name, status transitioned to In Review, with a structured description linking the PR and Jenkins build. The ticket's summary/name is supplied by whichever skill invokes this one — this skill doesn't invent ticket titles. Load when a flow needs to file or update a MOB ticket.
 ---
 
 # Create the MOB ticket
@@ -17,7 +17,10 @@ Ids below are the known MOB values — treat them as config the caller may overr
 
 ## Summary & description
 
-- **Summary:** `<component> Fix Mend vulnerabilities`.
+- **Summary:** supplied by the calling skill — this skill only knows Jira mechanics, not what to
+  call the ticket. E.g. the **mend-blz** skill passes `Fix Mend vulnerabilities <repository name>`
+  (the repo's short name, e.g. `Fix Mend vulnerabilities a.blazemeter.com` — not the component
+  alias).
 - **Description**, in this order:
   1. Dependencies fixed — one line each `library: <from> → <to>` + severity/CVE.
   2. **PR link** (the real, open PR).
