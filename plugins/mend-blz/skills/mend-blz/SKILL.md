@@ -1,6 +1,6 @@
 ---
 name: mend-blz
-description: End-to-end Mend vulnerability remediation for Blazemeter components (a.blazemeter, dagger, search). Composes the mend, dep-remediation, jenkins, github, and jira skills into one loop — Mend alerts → dependency fix on a fresh date-stamped branch → Jenkins green → PR → Jira (MOB). Load when the user wants to fix/remediate Mend/WhiteSource vulnerabilities for a Blazemeter service.
+description: End-to-end Mend vulnerability remediation for Blazemeter components (a.blazemeter, dagger, search). Composes the mend, dep-remediation, jenkins, github, and jira skills into one loop — Mend alerts → dependency fix on a fresh date-stamped branch → Jenkins green → PR → Jira (MOB) → Confluence report of unfixed alerts. Load when the user wants to fix/remediate Mend/WhiteSource vulnerabilities for a Blazemeter service.
 ---
 
 # When to use
@@ -15,6 +15,7 @@ composer — the reusable knowledge lives in five skills it drives:
 | Trigger the branch build with `PUSH_TO_GCR=true` and gate on green | **jenkins** |
 | Dated branch, commit/push, open PR, tag PR with the ticket id | **github** |
 | Create the MOB ticket (In Review, assignee = owner) | **jira** |
+| Report unfixed alerts to the Confluence tracking page | this skill (see [references/confluence-report.md](references/confluence-report.md)) |
 
 These auto-load alongside this recipe; defer to them for the "how," and follow the order/gates below.
 
@@ -48,7 +49,7 @@ orchestrator's `config/services.json`) a per-component entry with these fields:
 
 # Fix loop
 
-Order: **alerts → branch → fix → local compile+unit-test → push → Jenkins green (GATE) → PR → Jira → tag PR with MOB id.** Local tests run before push (fail fast); Jenkins-green is the hard gate — nothing downstream runs until the branch build is green.
+Order: **alerts → branch → fix → local compile+unit-test → push → Jenkins green (GATE) → PR → Jira → tag PR with MOB id → Confluence report.** Local tests run before push (fail fast); Jenkins-green is the hard gate — nothing downstream runs until the branch build is green. The Confluence report step runs regardless of how the run ends (including a red-build stop) — it is the record of what's still outstanding.
 
 1. **Fetch alerts → triage to the requested scope** (default HIGH+CRITICAL, case-insensitive) — via **mend**. Resolve the project token first. Triage by the alert set, not by what's in flight (fix an in-scope alert even if it's in another open PR). Only fix alerts in the component's `stack` ecosystem; defer the rest to the summary.
 2. **Create the dated branch** `mend-fix-<YYYYMMDD-HHMMSS>` off `integration_branch` — via **github**.
@@ -66,6 +67,14 @@ Order: **alerts → branch → fix → local compile+unit-test → push → Jenk
     | `<repo>` | CVE-… / `lib` | `x → y` | ✅ / ❌ | *(only if needed)* |
 
     "Succeeded" = fix landed **and** Jenkins went green. **Leave Notes empty on success** — fill only on ❌/deferred (failing stage + root cause, hit the 3-attempt cap, breaking major required, or the Mend fix version was itself under advisory). Below the table, also list: alerts deferred as out-of-recipe ecosystem, alerts outside the requested scope, and any `pending Mend rescan` items.
+11. **Report unfixed alerts to Confluence** — every alert from step 1's triage that did **not**
+    end up ✅ in the step-10 table (deferred, failed the build/Jenkins gate, out-of-recipe
+    ecosystem, out-of-scope, or `pending Mend rescan`) gets one row appended to the tracking table
+    on the [Mend vulns](https://perforce.atlassian.net/wiki/spaces/BLZRD/pages/3332964371/Mend+vuls)
+    Confluence page. **Never remove or overwrite existing rows** — this table accumulates across
+    runs. See [references/confluence-report.md](references/confluence-report.md) for the exact API
+    calls and row format. Do this even when the run stopped early (e.g. Jenkins never went green) —
+    it's the audit trail of what's still outstanding, so it runs whether or not step 10 does.
 
 # Command flags
 
@@ -75,8 +84,10 @@ Order: **alerts → branch → fix → local compile+unit-test → push → Jenk
 | `test` | Skip the Mend API; read pre-seeded JSON from `/tmp/mend-<component>-vulns.json` (see **mend**). |
 | `nojenkins` | Skip the Jenkins-green gate — open the PR/Jira without waiting for the build. |
 | `nojira` | Skip Jira create/update. |
+| `noconfluence` | Skip the step-11 Confluence report. |
 
 # References
 
 - Component registry (authoritative): `config/services.json` in **blz-claude-orchestrator**.
 - Composed skills: **mend**, **dep-remediation**, **jenkins**, **github**, **jira**.
+- Confluence report mechanics: [references/confluence-report.md](references/confluence-report.md).

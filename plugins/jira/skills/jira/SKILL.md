@@ -17,7 +17,7 @@ Ids below are the known MOB values — treat them as config the caller may overr
 
 ## Summary & description
 
-- **Summary:** `<component> Fix Mend vulnerabilities`.
+- **Summary:** `Fix Mend vulnerabilities <repository name>` (the repo's short name, e.g. `Fix Mend vulnerabilities a.blazemeter.com` — not the component alias).
 - **Description**, in this order:
   1. Dependencies fixed — one line each `library: <from> → <to>` + severity/CVE.
   2. **PR link** (the real, open PR).
