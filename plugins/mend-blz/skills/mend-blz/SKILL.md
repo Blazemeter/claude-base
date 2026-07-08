@@ -12,7 +12,7 @@ composer — the reusable knowledge lives in five skills it drives:
 |------|-------|
 | Fetch/triage Mend alerts, resolve project token, severity | **mend** |
 | Apply the fix (golden rule, advisory cross-check, defer majors, per-stack recipe, local build+test) | **dep-remediation** |
-| Trigger the branch build with `PUSH_TO_GCR=true` and gate on green | **jenkins** |
+| Trigger the branch build with `PUSH_TO_GCR=true` + `PERFORM_WHITESOURCE_SCAN=true` and gate on green | **jenkins** |
 | Dated branch, commit/push, open PR, tag PR with the ticket id | **github** |
 | Create the MOB ticket (In Review, assignee = owner) — this skill supplies the ticket summary | **jira** |
 | Report unfixed alerts to the Confluence tracking page | this skill (see [references/mend-confluence-report.md](references/mend-confluence-report.md)) |
@@ -56,7 +56,8 @@ Order: **alerts → branch → fix → local compile+unit-test → push → Jenk
 3. **Apply the fix** for every in-scope alert, batched into the branch, per the `stack` — via **dep-remediation** (golden rule, advisory cross-check, defer breaking majors to Notes).
 4. **Compile + run unit tests locally** per stack — via **dep-remediation**. Only push if green.
 5. **Commit + push** the branch — via **github**.
-6. **Trigger the build with `PUSH_TO_GCR=true` and poll until green** — via **jenkins**. Red → fix-forward, cap **3 attempts**; still red → stop (no PR/Jira) + Notes.
+6. **Trigger the build with `PUSH_TO_GCR=true` + `PERFORM_WHITESOURCE_SCAN=true` and poll until
+   green** — via **jenkins**. Red → fix-forward, cap **3 attempts**; still red → stop (no PR/Jira) + Notes.
 7. **Open the PR** into `integration_branch` — via **github**.
 8. **Create the MOB ticket** (In Review, assignee = owner) unless `nojira` — via **jira**, passing
    the summary `Fix Mend vulnerabilities <repository name>` (jira owns project/board/fields/
