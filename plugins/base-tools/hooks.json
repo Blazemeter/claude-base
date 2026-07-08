@@ -125,7 +125,7 @@
         ]
       },
       {
-        "_comment": "STANDARDS rule 2 — AI_generated label on JIRA create.",
+        "_comment": "STANDARDS rule 2 — ai_assisted label on JIRA create.",
         "matcher": "mcp__claude_ai_Atlassian_Rovo__createJiraIssue",
         "hooks": [
           {

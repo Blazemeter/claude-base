@@ -13,9 +13,9 @@
 # check is safe-by-default and never blocks a PR until the org wires the
 # secrets and promotes it to a required check.
 
-# --- Rule #2: AI_generated label ----------------------------------------
+# --- Rule #2: ai_assisted label ----------------------------------------
 # The label every Claude-created issue must carry.
-ai_label: "AI_generated"
+ai_label: "ai_assisted"
 
 # JQL that selects issues which SHOULD carry ai_label but might not — i.e.
 # issues created by a Claude tool path. This is org-specific (it depends on the
@@ -23,7 +23,7 @@ ai_label: "AI_generated"
 # UNSET. While it is the "__UNSET__" placeholder the label audit is SKIPPED
 # (reported as skipped, never failed) — exactly like an unset jira-lifecycle
 # transition. Example once you know your account:
-#   label_audit_jql: 'reporter = "claude-svc@perforce.com" AND labels != AI_generated ORDER BY created DESC'
+#   label_audit_jql: 'reporter = "claude-svc@perforce.com" AND labels != ai_assisted ORDER BY created DESC'
 label_audit_jql: "__UNSET__"
 
 # Cap how many issues the label audit pulls per run (nightly job).

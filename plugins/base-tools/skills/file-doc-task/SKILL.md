@@ -129,7 +129,7 @@ never to file a second one.
 3. **Compare** the rebuilt description to the existing one:
    - **Materially stale** (behavior, customer impact, PR link, or previously
      open questions have changed) → `editJiraIssue` to update the description.
-     Preserve the `ready-for-docs` and `AI_generated` labels and the existing
+     Preserve the `ready-for-docs` and `ai_assisted` labels and the existing
      link to the engineering ticket. Do not change the summary unless the
      customer-facing feature name itself changed.
    - **Already current** → make no edit; just confirm the link.
@@ -178,13 +178,13 @@ never to file a second one.
 
 4. **Create the issue** via `createJiraIssue`:
    - **Summary:** `DOC-ready: <customer-facing feature name>`
-   - **Labels:** include **both** `ready-for-docs` **and** `AI_generated` under
+   - **Labels:** include **both** `ready-for-docs` **and** `ai_assisted` under
      `additional_fields.labels` — e.g.
-     `additional_fields: { "labels": ["ready-for-docs", "AI_generated"] }`.
+     `additional_fields: { "labels": ["ready-for-docs", "ai_assisted"] }`.
      `createJiraIssue` has no top-level `labels` param; labels passed anywhere
      else are silently dropped and never land on the ticket. The rule-2
      `inject-ai-generated-label` hook *blocks* the call and forces a retry if
-     `AI_generated` is missing — so add it up front rather than relying on
+     `ai_assisted` is missing — so add it up front rather than relying on
      auto-injection.
    - **Project / issue type:** from `policy/doc-task.yaml`.
    - **Description:** the filled template from step 2.
