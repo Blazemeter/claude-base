@@ -1,8 +1,8 @@
 {
   "name": "jira",
-  "description": "Create and transition Blazemeter MOB Jira tickets — project MOB / board 5348, type Task, Product=Blazemeter, Scrum Team=Terra, active sprint, assignee = the repo owner, status In Review, with a structured description (deps fixed + PR + Jenkins links). Reusable by any flow that files MOB tickets.",
-  "version": "0.1.1",
+  "description": "Create and transition a Jira ticket — generic Jira Cloud REST mechanics only. Project, board, issue type, custom fields, assignee-resolution, target status, and summary/description are all caller-supplied config (see the mend-blz skill for a concrete MOB example). Reusable by any flow that files a ticket.",
+  "version": "0.2.0",
   "author": { "name": "Tehila" },
   "license": "MIT",
-  "keywords": ["jira", "mob", "atlassian", "ticket", "blazemeter"]
+  "keywords": ["jira", "atlassian", "ticket"]
 }

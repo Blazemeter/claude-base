@@ -1,4 +1,4 @@
-# Confluence unfixed-vulnerabilities report
+# Mend Confluence unfixed-vulnerabilities report
 
 Mechanics for step 11 of the `mend-blz` fix loop: append a row per unfixed alert to the shared
 tracking table on Confluence. One page, shared across every component/run — an accumulating log,
