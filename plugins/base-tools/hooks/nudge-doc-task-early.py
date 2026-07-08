@@ -50,7 +50,7 @@ NUDGE = (
     "outcome. It's idempotent: the finalize pass at PR time reconciles this "
     "draft to as-built rather than filing a second ticket. If docs clearly "
     "don't apply yet, you can defer — the PR gate will still require a decision "
-    "before merge."
+    "before you can open the PR (`gh pr create`)."
 )
 
 

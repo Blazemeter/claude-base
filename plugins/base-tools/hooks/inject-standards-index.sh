@@ -68,8 +68,10 @@ if [ -n "$cfg" ]; then
     cat <<EOF
 
 > ⚠️ **claude-base rule #4 not yet configured.** \`$cfg\` still has
-> \`project_key: __UNSET__\`, so \`file-doc-task\` will refuse to file doc
-> tickets and PRs on feature branches will stay blocked by the doc-task gate.
+> \`project_key: __UNSET__\`. The PR gate itself only needs a recorded decision
+> (filed / not-required / not-applicable), so a not-applicable PR is unaffected —
+> but \`file-doc-task\` will refuse to file a real doc ticket until this is set,
+> so any PR that genuinely needs one will stay blocked by the doc-task gate.
 > Copy the bundled template to \`policy/doc-task.yaml\` at your repo root and set
 > your real documentation JIRA project key to activate the workflow.
 EOF
